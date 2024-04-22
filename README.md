@@ -1,4 +1,15 @@
 ## News
+
+2024.4.22
+# 目前已经实现： 
+if、while语句处理
+# 待实现： 
+1.for、else的实现
+2.read pass之后变化
+3.多文件项目编译成大的ir文件，指定value后能否知道文件的绝对地址，之后去parse原来的文件找到信息
+
+
+
 * <b>SVF now supports LLVM-13.0.0 (Thank [Shengjie Xu](https://github.com/xushengj) for his help!). </b>
 * <b>[Object clustering](https://github.com/SVF-tools/SVF/wiki/Object-Clustering) published in our [OOPSLA paper](https://yuleisui.github.io/publications/oopsla21.pdf) is now available in SVF </b>
 * <b>[Hash-Consed Points-To Sets](https://github.com/SVF-tools/SVF/wiki/Hash-Consed-Points-To-Sets) published in our [SAS paper](https://yuleisui.github.io/publications/sas21.pdf) is now available in SVF </b>
