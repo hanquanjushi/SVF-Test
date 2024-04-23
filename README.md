@@ -3,9 +3,11 @@
 2024.4.23
 # 目前已经实现： 
 if、else、while、for语句处理
+
 目前只考虑含BinaryOperator的这些语句，还未考虑if(a)这种情况
 # 待实现： 
 1.#include <unistd> read fread  经过parse之后变化
+
 2.多文件项目编译成大的ir文件，指定value后能否知道文件的绝对地址，之后去parse原来的文件找到信息
 
 
