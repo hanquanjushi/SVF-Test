@@ -102,11 +102,12 @@ enum CXChildVisitResult LightAnalysis::astVisitor(CXCursor curCursor,
                            static_cast<CXCursorKind>(clang_getCursorKind(
                                temp_parent)) != CXCursor_FunctionDecl)
                     {
-                        temp_parent = clang_getCursorSemanticParent(temp_parent);
+                        temp_parent =
+                            clang_getCursorSemanticParent(temp_parent);
                     }
-                  
 
-                    CXSourceRange scope_range = clang_getCursorExtent(temp_parent);
+                    CXSourceRange scope_range =
+                        clang_getCursorExtent(temp_parent);
                     CXSourceLocation startLoc =
                         clang_getRangeStart(scope_range);
                     CXSourceLocation endLoc = clang_getRangeEnd(scope_range);
@@ -182,6 +183,8 @@ enum CXChildVisitResult LightAnalysis::astVisitor(CXCursor curCursor,
                                   << "\n";
                         std::cout << "The if scope ends at line " << endLine
                                   << ", column " << endColumn << "\n";
+                        // find if haselse or not
+                        
                     }
                     else if (flag == 1 && static_cast<CXCursorKind>(
                                               clang_getCursorKind(parent)) ==
@@ -201,6 +204,26 @@ enum CXChildVisitResult LightAnalysis::astVisitor(CXCursor curCursor,
                                   << startLine << ", column " << startColumn
                                   << "\n";
                         std::cout << "The while scope ends at line " << endLine
+                                  << ", column " << endColumn << "\n";
+                    }
+                    else if (flag == 1 && static_cast<CXCursorKind>(
+                                              clang_getCursorKind(parent)) ==
+                                              CXCursor_ForStmt)
+                    {
+                        // 找到这个 condition 所在的 scope 信息，以及它所
+                        // dominate 的 scope 信息
+                        CXSourceRange range = clang_getCursorExtent(parent);
+                        CXSourceLocation startLoc = clang_getRangeStart(range);
+                        CXSourceLocation endLoc = clang_getRangeEnd(range);
+                        unsigned startLine, startColumn, endLine, endColumn;
+                        clang_getSpellingLocation(startLoc, NULL, &startLine,
+                                                  &startColumn, NULL);
+                        clang_getSpellingLocation(endLoc, NULL, &endLine,
+                                                  &endColumn, NULL);
+                        std::cout << "The for scope starts from line "
+                                  << startLine << ", column " << startColumn
+                                  << "\n";
+                        std::cout << "The for scope ends at line " << endLine
                                   << ", column " << endColumn << "\n";
                     }
                     clang_disposeString(op_name);
