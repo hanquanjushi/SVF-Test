@@ -49,16 +49,27 @@ public:
     // this function is used to map the SVFValue to its corresponding AST node.
     void projection(const SVFValue*, const SVFVar*);
 
+    static enum CXChildVisitResult countChildren(CXCursor cursor,
+                                                 CXCursor parent,
+                                                 CXClientData clientData);
+
+    static void printSourceRange(CXSourceRange range,
+                                 const std::string& blockName);
+
     static enum CXChildVisitResult cursorVisitor(CXCursor cursor,
                                                  CXCursor parent,
                                                  CXClientData client_data);
+
+    static enum CXChildVisitResult findIfElseScope(CXCursor cursor,
+                                                   CXCursor parent,
+                                                   CXClientData clientData);
 
     static enum CXChildVisitResult astVisitor(CXCursor cursor, CXCursor parent,
                                               CXClientData client_data);
 
     void runOnSrc();
 
-    void findNodeOnTree(unsigned int target_line,int order_number,
+    void findNodeOnTree(unsigned int target_line, int order_number,
                         const std::string& functionName,
                         const std::vector<std::string>& parameters);
     static int getLineFromSVFSrcLocString(const std::string&);
