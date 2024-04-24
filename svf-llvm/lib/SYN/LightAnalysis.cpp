@@ -135,19 +135,29 @@ enum CXChildVisitResult LightAnalysis::astVisitor(CXCursor curCursor,
                         std::cout << "find <" << std::endl;
                         flag = 1;
                     }
-                    if (strcmp(op_string, "<=") == 0 && operation == "sle")
+                    else if (strcmp(op_string, "<=") == 0 && operation == "sle")
                     {
                         std::cout << "find <=" << std::endl;
                         flag = 1;
                     }
-                    if (strcmp(op_string, ">") == 0 && operation == "sgt")
+                    else if (strcmp(op_string, ">") == 0 && operation == "sgt")
                     {
                         std::cout << "find >" << std::endl;
                         flag = 1;
                     }
-                    if (strcmp(op_string, ">=") == 0 && operation == "sge")
+                    else if (strcmp(op_string, ">=") == 0 && operation == "sge")
                     {
                         std::cout << "find >=" << std::endl;
+                        flag = 1;
+                    }
+                    else if (strcmp(op_string, "+") == 0 && operation == "ne")
+                    {
+                        // std::cout << "find >=" << std::endl;
+                        flag = 1;
+                    }
+                    else if (strcmp(op_string, "-") == 0 && operation == "ne")
+                    {
+                        // std::cout << "find >=" << std::endl;
                         flag = 1;
                     }
                     if (flag == 1 &&
@@ -196,6 +206,74 @@ enum CXChildVisitResult LightAnalysis::astVisitor(CXCursor curCursor,
                 }
                 clang_disposeTokens(TU, tokens, numTokens);
             }
+            else if (static_cast<CXCursorKind>(clang_getCursorKind(
+                         curCursor)) == CXCursor_UnaryOperator)
+            {
+                CXSourceRange range = clang_getCursorExtent(curCursor);
+                CXToken* tokens = 0;
+                unsigned int numTokens = 0;
+                CXTranslationUnit TU =
+                    clang_Cursor_getTranslationUnit(curCursor);
+                clang_tokenize(TU, range, &tokens, &numTokens);
+                int flag = 0;
+                if (numTokens > 1)
+                {
+                    CXString op_name = clang_getTokenSpelling(TU, tokens[0]);
+
+                    const char* op_string = clang_getCString(op_name);
+                    if (strcmp(op_string, "!") == 0 && operation == "ne")
+                    {
+                        std::cout << "find !" << std::endl;
+                        flag = 1;
+                    }
+
+                    if (flag == 1 &&
+                        static_cast<CXCursorKind>(
+                            clang_getCursorKind(parent)) == CXCursor_IfStmt)
+                    {
+                        // 找到这个 condition 所在的 scope 信息，以及它所
+                        // dominate 的 scope 信息（对于 if，可以进一步找 else 的
+                        // scope 信息）
+                        unsigned int childCount = 0;
+                        clang_visitChildren(parent, &countChildren,
+                                            &childCount);
+                        if (childCount == 2)
+                        {
+                            CXSourceRange range = clang_getCursorExtent(parent);
+                            printSourceRange(range, "if");
+                        }
+                        else if (childCount == 3)
+                        {
+                            CXSourceRange range = clang_getCursorExtent(parent);
+                            printSourceRange(range, "whole_if");
+                            childCount = 0;
+                            clang_visitChildren(parent, &findIfElseScope,
+                                                &childCount);
+                        }
+                    }
+                    else if (flag == 1 && static_cast<CXCursorKind>(
+                                              clang_getCursorKind(parent)) ==
+                                              CXCursor_WhileStmt)
+                    {
+                        // 找到这个 condition 所在的 scope 信息，以及它所
+                        // dominate 的 scope 信息
+                        CXSourceRange range = clang_getCursorExtent(parent);
+                        printSourceRange(range, "while");
+                    }
+                    else if (flag == 1 && static_cast<CXCursorKind>(
+                                              clang_getCursorKind(parent)) ==
+                                              CXCursor_ForStmt)
+                    {
+                        // 找到这个 condition 所在的 scope 信息，以及它所
+                        // dominate 的 scope 信息
+                        CXSourceRange forRange = clang_getCursorExtent(parent);
+                        printSourceRange(forRange, "for");
+                    }
+                    clang_disposeString(op_name);
+                }
+                clang_disposeTokens(TU, tokens, numTokens);
+            }
+
             break;
         }
         default: {

@@ -4,7 +4,7 @@ int add(int a, int b)
 }
 int fib(int n)
 {
-    if (n < 0)
+    if (n+n)
     {
         return -1;
     }
@@ -13,7 +13,7 @@ int fib(int n)
     {
         return 1;
     }
-    else
+    else if (!n)
     {
         add(1, 2);
     }
