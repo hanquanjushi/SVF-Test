@@ -5,12 +5,9 @@
 #ifndef SVF_LIGHTANALYSIS_H
 #define SVF_LIGHTANALYSIS_H
 
-#include <cstdio>
-#include <map>
-#include <string>
+#include <cstdio> 
 #include <unordered_map>
-#include <vector>
-
+#include <algorithm>
 #include "SVFIR/SVFValue.h"
 #include "SVFIR/SVFVariables.h"
 #include "clang-c/Index.h"
@@ -63,6 +60,9 @@ public:
     static enum CXChildVisitResult findIfElseScope(CXCursor cursor,
                                                    CXCursor parent,
                                                    CXClientData clientData);
+
+    static enum CXChildVisitResult CallParams(CXCursor cursor, CXCursor parent,
+                                       CXClientData clientData);
 
     static enum CXChildVisitResult astVisitor(CXCursor cursor, CXCursor parent,
                                               CXClientData client_data);

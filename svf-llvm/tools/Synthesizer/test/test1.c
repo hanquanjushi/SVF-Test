@@ -28,9 +28,9 @@ int main()
     int d = c;
     d = fib(5);
     int m = 5;
-    while (a < m)
+    while (  m)
     {
-        a = a + 1;
+        m=m-1;
     }
     for (int i = 1; i < m; i++)
     {

@@ -108,14 +108,14 @@ void traverseOnSVFStmt(const ICFGNode* node)
                     conditionstring.find(" ", spacePos + 1);
                 std::string operation = conditionstring.substr(
                     spacePos + 1, nextSpacePos - spacePos - 1);
-                //       std::cout << operation << std::endl;
+                std::cout << operation << std::endl;
                 // 创建空的vector
                 std::vector<std::string> parameters = {};
                 lightAnalysis->findNodeOnTree(num, branch_order, operation,
                                               parameters);
             }
         }
-        
+
         else if (const AddrStmt* addr = SVFUtil::dyn_cast<AddrStmt>(stmt))
         {
             std::string addrstring = addr->getValue()->toString();
