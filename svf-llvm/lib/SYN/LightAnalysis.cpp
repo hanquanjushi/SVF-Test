@@ -73,7 +73,6 @@ enum CXChildVisitResult LightAnalysis::astVisitor(CXCursor curCursor,
             {
                 std::string functionName = data->functionName;
                 std::vector<std::string> params_type;
-                std::reverse(params_type.begin(), params_type.end());
                 std::cout << "Function name: " << functionName << "\n";
                 std::vector<std::string> parameters = data->parameters;
 
@@ -90,7 +89,7 @@ enum CXChildVisitResult LightAnalysis::astVisitor(CXCursor curCursor,
                         params_type.push_back(parameter);
                     }
                 }
-
+                // std::reverse(params_type.begin(), params_type.end());
                 CXString cursor_name = clang_getCursorSpelling(curCursor);
                 std::string current_function_name =
                     clang_getCString(cursor_name);
@@ -101,11 +100,13 @@ enum CXChildVisitResult LightAnalysis::astVisitor(CXCursor curCursor,
                     // 找到函数返回值赋值的变量，判断这个变量是不是第一次定义，找到这个
                     // call site 所处的 scope 信息（大括号）
                     int params_size = params_type.size();
-                    VisitorData data{params_size, 0, "", params_type};
+                    VisitorData data{params_size,
+                                     static_cast<unsigned int>(params_size), "",
+                                     params_type};
                     clang_visitChildren(curCursor, &CallParams, &data);
 
                     CXSourceRange callRange = clang_getCursorExtent(curCursor);
-                    printSourceRange(callRange, "functionName");
+                    printSourceRange(callRange, functionName);
                     CXString var_name = clang_getCursorSpelling(parent);
 
                     if (clang_getCursorKind(parent) == CXCursor_VarDecl)
@@ -153,10 +154,13 @@ enum CXChildVisitResult LightAnalysis::CallParams(CXCursor cursor,
 {
     VisitorData* data = static_cast<VisitorData*>(clientData);
     std::vector<std::string> params = data->parameters;
+    int total = (int)(data->target_line);
     if (static_cast<CXCursorKind>(clang_getCursorKind(cursor)) !=
-        CXCursor_IntegerLiteral)
+            CXCursor_IntegerLiteral &&
+        static_cast<CXCursorKind>(clang_getCursorKind(cursor)) !=
+            CXCursor_BinaryOperator)
     {
-          return CXChildVisit_Continue;
+        return CXChildVisit_Continue;
     }
     if (data->order_number > 0)
     {
@@ -164,7 +168,21 @@ enum CXChildVisitResult LightAnalysis::CallParams(CXCursor cursor,
                 CXCursor_IntegerLiteral &&
             params[data->order_number - 1] == "i32")
         {
-            printf("%d param is int\n", data->order_number - 1);
+            int m = data->order_number - 1;
+            m = total - m;
+            printf("%d param is int\n", m);
+            CXSourceRange callRange = clang_getCursorExtent(cursor);
+            printSourceRange(callRange, "param" + std::to_string(m));
+        }
+        else if (static_cast<CXCursorKind>(clang_getCursorKind(cursor)) ==
+                     CXCursor_BinaryOperator &&
+                 params[data->order_number - 1] == "i32")
+        {
+            int m = data->order_number - 1;
+            m = total - m;
+            printf("%d param is int\n", m);
+            CXSourceRange callRange = clang_getCursorExtent(cursor);
+            printSourceRange(callRange, "param" + std::to_string(m));
         }
         else
         {
