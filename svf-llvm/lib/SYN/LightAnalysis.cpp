@@ -160,6 +160,14 @@ enum CXChildVisitResult LightAnalysis::astVisitor(CXCursor curCursor,
                         // std::cout << "find >=" << std::endl;
                         flag = 1;
                     }
+                    else if (strcmp(op_string, "||") == 0)
+                    {
+                        flag = 1;
+                    }
+                    else if (strcmp(op_string, "&&") == 0)
+                    {
+                        flag = 1;
+                    }
                     if (flag == 1 &&
                         static_cast<CXCursorKind>(
                             clang_getCursorKind(parent)) == CXCursor_IfStmt)
