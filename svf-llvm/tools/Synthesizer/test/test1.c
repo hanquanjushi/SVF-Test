@@ -1,10 +1,10 @@
-int add(int a, int b)
+int add(int a, float b)
 {
-    return a + b;
+    return a;
 }
 int fib(int n)
 {
-    if (n < 0)
+    if (n+n)
     {
         return -1;
     }
@@ -13,11 +13,11 @@ int fib(int n)
     {
         return 1;
     }
-    else
+    else if (!n)
     {
-        add(1, 2);
+        add(1, 2.0);
     }
-    return add(1, 2);
+    return add(1, 2.0);
 }
 
 int main()
@@ -28,9 +28,9 @@ int main()
     int d = c;
     d = fib(5);
     int m = 5;
-    while (a < m)
+    while (  m)
     {
-        a = a + 1;
+        m=m-1;
     }
     for (int i = 1; i < m; i++)
     {

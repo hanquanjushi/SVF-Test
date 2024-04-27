@@ -68,33 +68,51 @@ enum CXChildVisitResult LightAnalysis::astVisitor(CXCursor curCursor,
         switch (order_number)
         {
         case 0: {
-
             if (static_cast<CXCursorKind>(clang_getCursorKind(curCursor)) ==
                 CXCursor_CallExpr)
             {
                 std::string functionName = data->functionName;
+                std::vector<std::string> params_type;
                 std::cout << "Function name: " << functionName << "\n";
                 std::vector<std::string> parameters = data->parameters;
-                std::cout << "Parameters: ";
+
                 for (auto& parameter : parameters)
                 {
-                    std::cout << parameter << " ";
+
+                    size_t pos = parameter.find(' ');
+                    if (pos != std::string::npos)
+                    {
+                        params_type.push_back(parameter.substr(0, pos));
+                    }
+                    else
+                    {
+                        params_type.push_back(parameter);
+                    }
                 }
+
                 CXString cursor_name = clang_getCursorSpelling(curCursor);
                 std::string current_function_name =
                     clang_getCString(cursor_name);
+
                 if (current_function_name == functionName)
                 {
                     std::cout << "Function name matches with the target "
                                  "function name.\n";
-                    // 找到函数返回值赋值的变量，判断这个变量是不是第一次定义，找到这个
-                    // call site 所处的 scope 信息（大括号）
+
+                    int params_size = params_type.size();
+                    VisitorData data{params_size,
+                                     static_cast<unsigned int>(params_size), "",
+                                     params_type};
+                    clang_visitChildren(curCursor, &callVisitor, &data);
+
+                    CXSourceRange callRange = clang_getCursorExtent(curCursor);
+                    printSourceRange(callRange, functionName);
                     CXString var_name = clang_getCursorSpelling(parent);
 
                     if (clang_getCursorKind(parent) == CXCursor_VarDecl)
                     {
                         std::cout << "Variable " << clang_getCString(var_name)
-                                  << " is defined here.\n";
+                                  << " is first defined here.\n";
                     }
                     auto temp_parent = parent;
                     while (static_cast<CXCursorKind>(clang_getCursorKind(
@@ -105,9 +123,8 @@ enum CXChildVisitResult LightAnalysis::astVisitor(CXCursor curCursor,
                         temp_parent =
                             clang_getCursorSemanticParent(temp_parent);
                     }
-                    CXSourceRange callRange =
-                        clang_getCursorExtent(temp_parent);
-                    printSourceRange(callRange, "call");
+                    callRange = clang_getCursorExtent(temp_parent);
+                    printSourceRange(callRange, "scope_where_call_is");
                 }
                 clang_disposeString(cursor_name);
             }
@@ -116,94 +133,157 @@ enum CXChildVisitResult LightAnalysis::astVisitor(CXCursor curCursor,
         case 1: {
             std::string operation = data->functionName;
             if (static_cast<CXCursorKind>(clang_getCursorKind(curCursor)) ==
-                CXCursor_BinaryOperator)
+                CXCursor_IfStmt)
             {
-                CXSourceRange range = clang_getCursorExtent(curCursor);
-                CXToken* tokens = 0;
-                unsigned int numTokens = 0;
-                CXTranslationUnit TU =
-                    clang_Cursor_getTranslationUnit(curCursor);
-                clang_tokenize(TU, range, &tokens, &numTokens);
-                int flag = 0;
-                if (numTokens > 1)
-                {
-                    CXString op_name = clang_getTokenSpelling(TU, tokens[1]);
-
-                    const char* op_string = clang_getCString(op_name);
-                    if (strcmp(op_string, "<") == 0 && operation == "slt")
-                    {
-                        std::cout << "find <" << std::endl;
-                        flag = 1;
-                    }
-                    if (strcmp(op_string, "<=") == 0 && operation == "sle")
-                    {
-                        std::cout << "find <=" << std::endl;
-                        flag = 1;
-                    }
-                    if (strcmp(op_string, ">") == 0 && operation == "sgt")
-                    {
-                        std::cout << "find >" << std::endl;
-                        flag = 1;
-                    }
-                    if (strcmp(op_string, ">=") == 0 && operation == "sge")
-                    {
-                        std::cout << "find >=" << std::endl;
-                        flag = 1;
-                    }
-                    if (flag == 1 &&
-                        static_cast<CXCursorKind>(
-                            clang_getCursorKind(parent)) == CXCursor_IfStmt)
-                    {
-                        // 找到这个 condition 所在的 scope 信息，以及它所
-                        // dominate 的 scope 信息（对于 if，可以进一步找 else 的
-                        // scope 信息）
-                        unsigned int childCount = 0;
-                        clang_visitChildren(parent, &countChildren,
-                                            &childCount);
-                        if (childCount == 2)
-                        {
-                            CXSourceRange range = clang_getCursorExtent(parent);
-                            printSourceRange(range, "if");
-                        }
-                        if (childCount == 3)
-                        {
-                            CXSourceRange range = clang_getCursorExtent(parent);
-                            printSourceRange(range, "whole_if");
-                            childCount = 0;
-                            clang_visitChildren(parent, &findIfElseScope,
-                                                &childCount);
-                        }
-                    }
-                    else if (flag == 1 && static_cast<CXCursorKind>(
-                                              clang_getCursorKind(parent)) ==
-                                              CXCursor_WhileStmt)
-                    {
-                        // 找到这个 condition 所在的 scope 信息，以及它所
-                        // dominate 的 scope 信息
-                        CXSourceRange range = clang_getCursorExtent(parent);
-                        printSourceRange(range, "while");
-                    }
-                    else if (flag == 1 && static_cast<CXCursorKind>(
-                                              clang_getCursorKind(parent)) ==
-                                              CXCursor_ForStmt)
-                    {
-                        // 找到这个 condition 所在的 scope 信息，以及它所
-                        // dominate 的 scope 信息
-                        CXSourceRange forRange = clang_getCursorExtent(parent);
-                        printSourceRange(forRange, "for");
-                    }
-                    clang_disposeString(op_name);
-                }
-                clang_disposeTokens(TU, tokens, numTokens);
+                VisitorData data{0, 0, operation, {}};
+                clang_visitChildren(curCursor, &ifstmtVisitor, &data);
+                unsigned int childCount = 0;
+                clang_visitChildren(curCursor, &countChildren, &childCount);
             }
-            break;
-        }
-        default: {
             break;
         }
         }
     }
     return CXChildVisit_Recurse;
+}
+enum CXChildVisitResult LightAnalysis::ifstmtVisitor(CXCursor cursor,
+                                                     CXCursor parent,
+                                                     CXClientData clientData)
+{
+    VisitorData* data = static_cast<VisitorData*>(clientData);
+
+    data->order_number = data->order_number + 1;
+    int count = data->order_number;
+    if (count == 1)
+    {
+        std::string operation = data->functionName;
+        if (static_cast<CXCursorKind>(clang_getCursorKind(cursor)) ==
+            CXCursor_BinaryOperator)
+        {
+            CXSourceRange binaryrange = clang_getCursorExtent(cursor);
+            printSourceRange(binaryrange, "binaryoperation");
+            CXToken* tokens = 0;
+            unsigned int numTokens = 0;
+            CXSourceRange range = clang_getCursorExtent(cursor);
+            CXTranslationUnit TU = clang_Cursor_getTranslationUnit(cursor);
+            clang_tokenize(TU, range, &tokens, &numTokens);
+            int flag = 0;
+            if (numTokens > 1)
+            {
+                CXString op_name = clang_getTokenSpelling(TU, tokens[1]);
+                const char* op_string = clang_getCString(op_name);
+                if (strcmp(op_string, "<") == 0 && operation == "slt")
+                {
+                    std::cout << "find <" << std::endl;
+                    flag = 1;
+                }
+                else if (strcmp(op_string, "<=") == 0 && operation == "sle")
+                {
+                    std::cout << "find <=" << std::endl;
+                    flag = 1;
+                }
+                else if (strcmp(op_string, ">") == 0 && operation == "sgt")
+                {
+                    std::cout << "find >" << std::endl;
+                    flag = 1;
+                }
+                else if (strcmp(op_string, ">=") == 0 && operation == "sge")
+                {
+                    std::cout << "find >=" << std::endl;
+                    flag = 1;
+                }
+                else if (strcmp(op_string, "+") == 0 && operation == "ne")
+                {
+                    flag = 1;
+                }
+                else if (strcmp(op_string, "-") == 0 && operation == "ne")
+                {
+                    flag = 1;
+                }
+            }
+            printf("flag = %d\n", flag);
+        }
+        else if (static_cast<CXCursorKind>(clang_getCursorKind(cursor)) ==
+                 CXCursor_UnaryOperator)
+        {
+            CXSourceRange range = clang_getCursorExtent(cursor);
+            CXToken* tokens = 0;
+            unsigned int numTokens = 0;
+            CXTranslationUnit TU = clang_Cursor_getTranslationUnit(cursor);
+            clang_tokenize(TU, range, &tokens, &numTokens);
+            int flag = 0;
+            if (numTokens > 1)
+            {
+                CXString op_name = clang_getTokenSpelling(TU, tokens[0]);
+
+                const char* op_string = clang_getCString(op_name);
+                if (strcmp(op_string, "!") == 0 && operation == "ne")
+                {
+                    std::cout << "find !" << std::endl;
+                    flag = 1;
+                }
+            }
+            printf("flag = %d\n", flag);
+        }
+    }
+    if (count == 2)
+    {
+        CXSourceRange ifrange = clang_getCursorExtent(cursor);
+        printSourceRange(ifrange, "if");
+    }
+    if (count == 3)
+    {
+        CXSourceRange elserange = clang_getCursorExtent(cursor);
+        printSourceRange(elserange, "else");
+        CXSourceRange range = clang_getCursorExtent(parent);
+        printSourceRange(range, "whole_if");
+    }
+    return CXChildVisit_Continue;
+}
+
+enum CXChildVisitResult LightAnalysis::callVisitor(CXCursor cursor,
+                                                   CXCursor parent,
+                                                   CXClientData clientData)
+{
+    VisitorData* data = static_cast<VisitorData*>(clientData);
+    std::vector<std::string> params = data->parameters;
+    int total = (int)(data->target_line);
+    if (static_cast<CXCursorKind>(clang_getCursorKind(cursor)) !=
+            CXCursor_IntegerLiteral &&
+        static_cast<CXCursorKind>(clang_getCursorKind(cursor)) !=
+            CXCursor_BinaryOperator)
+    {
+        return CXChildVisit_Continue;
+    }
+    if (data->order_number > 0)
+    {
+        if (static_cast<CXCursorKind>(clang_getCursorKind(cursor)) ==
+                CXCursor_IntegerLiteral &&
+            params[data->order_number - 1] == "i32")
+        {
+            int m = data->order_number - 1;
+            m = total - m;
+            printf("%d param is int\n", m);
+            CXSourceRange callRange = clang_getCursorExtent(cursor);
+            printSourceRange(callRange, "param" + std::to_string(m));
+        }
+        else if (static_cast<CXCursorKind>(clang_getCursorKind(cursor)) ==
+                     CXCursor_BinaryOperator &&
+                 params[data->order_number - 1] == "i32")
+        {
+            int m = data->order_number - 1;
+            m = total - m;
+            printf("%d param is int\n", m);
+            CXSourceRange callRange = clang_getCursorExtent(cursor);
+            printSourceRange(callRange, "param" + std::to_string(m));
+        }
+        else
+        {
+            printf("%d param not match\n", data->order_number - 1);
+        }
+        data->order_number--;
+    }
+    return CXChildVisit_Continue;
 }
 
 enum CXChildVisitResult LightAnalysis::countChildren(CXCursor cursor,
@@ -212,7 +292,6 @@ enum CXChildVisitResult LightAnalysis::countChildren(CXCursor cursor,
 {
     unsigned int* count = (unsigned int*)clientData;
     (*count)++;
-
     return CXChildVisit_Continue;
 }
 
@@ -235,35 +314,6 @@ enum CXChildVisitResult LightAnalysis::findIfElseScope(CXCursor cursor,
     return CXChildVisit_Continue;
 }
 
-enum CXChildVisitResult LightAnalysis::cursorVisitor(CXCursor curCursor,
-                                                     CXCursor parent,
-                                                     CXClientData client_data)
-{
-
-    CXString current_display_name = clang_getCursorDisplayName(curCursor);
-    // Allocate a CXString representing the name of the current cursor
-
-    auto str = clang_getCString(current_display_name);
-    std::cout << "Visiting element " << str << "\n";
-    // Print the char* value of current_display_name
-    // 获取源代码中的位置
-    CXSourceLocation loc = clang_getCursorLocation(curCursor);
-    unsigned int line, column;
-    CXFile file;
-    clang_getSpellingLocation(loc, &file, &line, &column,
-                              nullptr); // 将位置转换为行号、列号和文件名
-
-    // 打印行号、列号和元素名称
-    std::cout << "Visiting element " << str << " at line " << line
-              << ", column " << column << "\n";
-
-    clang_disposeString(current_display_name);
-    // Since clang_getCursorDisplayName allocates a new CXString, it must be
-    // freed. This applies to all functions returning a CXString
-
-    return CXChildVisit_Recurse;
-}
-
 void LightAnalysis::printSourceRange(CXSourceRange range,
                                      const std::string& blockName)
 {
@@ -273,7 +323,30 @@ void LightAnalysis::printSourceRange(CXSourceRange range,
     clang_getSpellingLocation(startLoc, NULL, &startLine, &startColumn, NULL);
     clang_getSpellingLocation(endLoc, NULL, &endLine, &endColumn, NULL);
     std::cout << "The " << blockName << " scope starts from line " << startLine
-              << ", column " << startColumn << "\n";
-    std::cout << "The " << blockName << " scope ends at line " << endLine
+              << ", column " << startColumn << ", and ends at line " << endLine
               << ", column " << endColumn << "\n";
+}
+
+enum CXChildVisitResult LightAnalysis::cursorVisitor(CXCursor curCursor,
+                                                     CXCursor parent,
+                                                     CXClientData client_data)
+{
+    CXString current_display_name = clang_getCursorDisplayName(curCursor);
+    // Allocate a CXString representing the name of the current cursor
+    auto str = clang_getCString(current_display_name);
+    std::cout << "Visiting element " << str << "\n";
+    // Print the char* value of current_display_name
+    // 获取源代码中的位置
+    CXSourceLocation loc = clang_getCursorLocation(curCursor);
+    unsigned int line, column;
+    CXFile file;
+    clang_getSpellingLocation(loc, &file, &line, &column, nullptr);
+    // 将位置转换为行号、列号和文件名
+    // 打印行号、列号和元素名称
+    std::cout << "Visiting element " << str << " at line " << line
+              << ", column " << column << "\n";
+    clang_disposeString(current_display_name);
+    // Since clang_getCursorDisplayName allocates a new CXString, it must be
+    // freed. This applies to all functions returning a CXString
+    return CXChildVisit_Recurse;
 }
