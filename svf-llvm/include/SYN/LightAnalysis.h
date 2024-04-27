@@ -57,11 +57,15 @@ public:
                                                  CXCursor parent,
                                                  CXClientData client_data);
 
+    static enum CXChildVisitResult ifstmtVisitor(CXCursor cursor,
+                                                   CXCursor parent,
+                                                   CXClientData clientData);
+
     static enum CXChildVisitResult findIfElseScope(CXCursor cursor,
                                                    CXCursor parent,
                                                    CXClientData clientData);
 
-    static enum CXChildVisitResult CallParams(CXCursor cursor, CXCursor parent,
+    static enum CXChildVisitResult callVisitor(CXCursor cursor, CXCursor parent,
                                        CXClientData clientData);
 
     static enum CXChildVisitResult astVisitor(CXCursor cursor, CXCursor parent,

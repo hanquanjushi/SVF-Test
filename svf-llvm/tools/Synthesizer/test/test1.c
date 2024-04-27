@@ -1,6 +1,6 @@
-int add(int a, int b)
+int add(int a, float b)
 {
-    return a + b;
+    return a;
 }
 int fib(int n)
 {
@@ -15,9 +15,9 @@ int fib(int n)
     }
     else if (!n)
     {
-        add(1, 2);
+        add(1, 2.0);
     }
-    return add(1, 2);
+    return add(1, 2.0);
 }
 
 int main()

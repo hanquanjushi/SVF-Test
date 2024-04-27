@@ -46,7 +46,6 @@ void traverseOnSVFStmt(const ICFGNode* node)
             // std::string callinfo = callPE->getValue()->getSourceLoc();
             CallICFGNode* callNode =
                 const_cast<CallICFGNode*>(callPE->getCallSite());
-            // 希望知道是不是第一次定义 也就是有没有type
             std::string callinfo = callNode->toString();
             SVFInstruction* cs =
                 const_cast<SVFInstruction*>(callNode->getCallSite());
@@ -55,7 +54,6 @@ void traverseOnSVFStmt(const ICFGNode* node)
             std::string::size_type pos = m.find("\"ln\":");
             unsigned int num =
                 std::stoi(m.substr(pos + 5, m.find(",") - pos - 5));
-            //     printf("num = %d\n", num);
             std::regex re("@(\\w+)\\((.+)\\)");
             std::smatch match;
             std::string functionName;
@@ -80,9 +78,7 @@ void traverseOnSVFStmt(const ICFGNode* node)
         else if (const BranchStmt* branch = SVFUtil::dyn_cast<BranchStmt>(stmt))
         {
             std::string brstring = branch->getValue()->toString();
-            //"   br i1 %5, label %6, label %7 "
             SVFVar* branchVar = const_cast<SVFVar*>(branch->getBranchInst());
-
             SVFValue* branchValue =
                 const_cast<SVFValue*>(branchVar->getValue());
             std::string location = branchValue->getSourceLoc();
@@ -90,14 +86,12 @@ void traverseOnSVFStmt(const ICFGNode* node)
             {
                 break;
             }
-            //   std::cout << location << std::endl;
+
             std::string::size_type pos = location.find("\"ln\":");
             unsigned int num = std::stoi(
                 location.substr(pos + 5, location.find(",") - pos - 5));
-            //     printf("num = %d\n", num);
             SVFVar* conditionVar = const_cast<SVFVar*>(branch->getCondition());
             std::string conditionstring = conditionVar->getValue()->toString();
-            //      std::cout << conditionstring << std::endl;
             //   %5 = icmp slt i32 %4, 0, !dbg !17 { "ln": 7, "cl": 11, "fl":
             //   "test1.c" }
             std::size_t icmpPos = conditionstring.find("icmp");
@@ -108,8 +102,6 @@ void traverseOnSVFStmt(const ICFGNode* node)
                     conditionstring.find(" ", spacePos + 1);
                 std::string operation = conditionstring.substr(
                     spacePos + 1, nextSpacePos - spacePos - 1);
-                std::cout << operation << std::endl;
-                // 创建空的vector
                 std::vector<std::string> parameters = {};
                 lightAnalysis->findNodeOnTree(num, branch_order, operation,
                                               parameters);
