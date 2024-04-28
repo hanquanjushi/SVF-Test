@@ -48,14 +48,19 @@ public:
 
     static void printSourceRange(CXSourceRange range,
                                  const std::string& blockName);
+    static enum CXChildVisitResult  printAST(
+        CXCursor cursor, CXCursor parent, CXClientData clientData);
 
+    static enum CXChildVisitResult VarDeclVisitor(CXCursor cursor,
+                                                  CXCursor parent,
+                                                  CXClientData clientData);
     static enum CXChildVisitResult cursorVisitor(CXCursor cursor,
                                                  CXCursor parent,
                                                  CXClientData client_data);
     static enum CXChildVisitResult countChildren(CXCursor cursor,
                                                  CXCursor parent,
                                                  CXClientData clientData);
-    
+
     static enum CXChildVisitResult forstmtVisitor(CXCursor cursor,
                                                   CXCursor parent,
                                                   CXClientData clientData);
