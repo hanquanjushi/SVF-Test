@@ -44,6 +44,7 @@ void traverseOnSVFStmt(const ICFGNode* node)
             // To handle Call Edge
             std::string callstring = callPE->getValue()->toString();
             // std::string callinfo = callPE->getValue()->getSourceLoc();
+            std::cout << callstring << std::endl;
             CallICFGNode* callNode =
                 const_cast<CallICFGNode*>(callPE->getCallSite());
             std::string callinfo = callNode->toString();
@@ -177,9 +178,9 @@ int main(int argc, char** argv)
     assert(pag && "pag cannot be nullptr!");
 
     auto str = SOURCEPATH();
-    //  auto lightAnalysis = new LightAnalysis(str);
+    auto lightAnalysis = new LightAnalysis(str);
 
-    //  lightAnalysis->runOnSrc();
+    lightAnalysis->runOnSrc();
     ICFG* icfg = pag->getICFG();
 
     for (const auto& it : *icfg)

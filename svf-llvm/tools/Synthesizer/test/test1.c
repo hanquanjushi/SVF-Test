@@ -4,7 +4,7 @@ int add(int a, float b)
 }
 int fib(int n)
 {
-    if (n+n)
+    if (n + n)
     {
         return -1;
     }
@@ -28,11 +28,16 @@ int main()
     int d = c;
     d = fib(5);
     int m = 5;
-    while (  m)
+    while (m)
     {
-        m=m-1;
+        m = m - 1;
     }
     for (int i = 1; i < m; i++)
+    {
+        a = a + 1;
+    }
+    int j;
+    for (j = 1; j < m; j++)
     {
         a = a + 1;
     }
