@@ -21,8 +21,7 @@ void LightAnalysis::runOnSrc()
         index, srcPath.c_str(), nullptr, 0, nullptr, 0, CXTranslationUnit_None);
     assert(unit && "unit cannot be nullptr!");
     CXCursor cursor = clang_getTranslationUnitCursor(unit);
-    clang_visitChildren(cursor, &printAST, nullptr);
-    clang_visitChildren(cursor, &cursorVisitor, nullptr);
+     clang_visitChildren(cursor, &cursorVisitor, nullptr);
 }
 struct VisitorData
 {
@@ -535,26 +534,7 @@ void LightAnalysis::printSourceRange(CXSourceRange range,
               << ", column " << endColumn << "\n";
 }
 
-enum CXChildVisitResult LightAnalysis::printAST(CXCursor cursor,
-                                                CXCursor parent,
-                                                CXClientData clientData)
-{
-    CXSourceLocation location = clang_getCursorLocation(cursor);
-    if (clang_Location_isFromMainFile(location) == 0)
-        return CXChildVisit_Continue;
-
-    CXString cursorKindName =
-        clang_getCursorKindSpelling(clang_getCursorKind(cursor));
-    CXString cursorSpelling = clang_getCursorSpelling(cursor);
-    std::cout << clang_getCString(cursorKindName) << " "
-              << clang_getCString(cursorSpelling) << std::endl;
-
-    clang_disposeString(cursorKindName);
-    clang_disposeString(cursorSpelling);
-
-    return CXChildVisit_Recurse;
-}
-
+ 
 enum CXChildVisitResult LightAnalysis::cursorVisitor(CXCursor curCursor,
                                                      CXCursor parent,
                                                      CXClientData client_data)
