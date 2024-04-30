@@ -4,7 +4,7 @@ int main()
 {
     char buffer[256];
     // 打开一个二进制文件
-    FILE* file = fopen("example.bin", "rb");
+    FILE* file = __builtin__fopen("example.bin", "rb");
     if (file == NULL)
     {
     }
@@ -17,9 +17,9 @@ int main()
     }
 
     // 关闭文件
-    fclose(file);
-    read(0, buffer, sizeof(buffer) - 1);
-    ssize_t bytesRead = read(0, buffer, sizeof(buffer) - 1); // 从文件中读取数据
+    __builtin__fclose(file);
+    __builtin__read(0, buffer, sizeof(buffer) - 1);
+    ssize_t bytesRead = __builtin__read(0, buffer, sizeof(buffer) - 1); // 从文件中读取数据
 
     if (bytesRead >= 0)
     {
