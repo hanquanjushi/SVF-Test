@@ -1,5 +1,12 @@
 ## News
 
+配置gllvm：
+sudo apt  install golang-go
+go install github.com/SRI-CSL/gllvm/cmd/...@latest
+export PATH=$PATH:/home/your_name/go/bin
+source ~/.bashrc
+source ~/.profile 
+
 2024.4.30
 # 目前已经实现： 
 1.if、else、while、for语句处理
