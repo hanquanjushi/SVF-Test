@@ -237,11 +237,7 @@ int main(int argc, char** argv)
                             parameters.push_back(parameter);
                         }
                     }
-                    // 打印parameters
-                    for (auto i : parameters)
-                    {
-                        std::cout << i << std::endl;
-                    }
+              
                     lightAnalysis->findNodeOnTree(num, call_order, functionName,
                                                   parameters);
                 }

@@ -70,7 +70,7 @@ enum CXChildVisitResult LightAnalysis::astVisitor(CXCursor curCursor,
         switch (order_number)
         {
         case 0: {
-          
+
             if (static_cast<CXCursorKind>(clang_getCursorKind(curCursor)) ==
                 CXCursor_CallExpr)
             {
@@ -90,10 +90,17 @@ enum CXChildVisitResult LightAnalysis::astVisitor(CXCursor curCursor,
                         params_type.push_back(parameter);
                     }
                 }
+                // 打印params_type
+                for (auto& param : params_type)
+                {
+                    std::cout << "param: " << param << "\n";
+                }
                 CXString cursor_name = clang_getCursorSpelling(curCursor);
                 std::string current_function_name =
                     clang_getCString(cursor_name);
-                if (current_function_name == functionName)
+
+                if (current_function_name == functionName ||
+                    current_function_name == "__builtin__" + functionName)
                 {
                     std::cout << "Function name matches with the target "
                                  "function name.\n";
@@ -155,7 +162,7 @@ enum CXChildVisitResult LightAnalysis::astVisitor(CXCursor curCursor,
     }
     return CXChildVisit_Recurse;
 }
- 
+
 enum CXChildVisitResult LightAnalysis::forstmtVisitor(CXCursor cursor,
                                                       CXCursor parent,
                                                       CXClientData clientData)
@@ -440,15 +447,16 @@ enum CXChildVisitResult LightAnalysis::callVisitor(CXCursor cursor,
     int total = (int)(data->target_line);
     int m = static_cast<CXCursorKind>(clang_getCursorKind(cursor));
     printf("m = %d\n", m);
-     if (m == CXCursor_UnexposedExpr && data->order_number > 0 &&
+    int index = total - data->order_number;
+    if (m == CXCursor_UnexposedExpr && data->order_number > 0 &&
         data->order_number != total)
     {
-        int m = data->order_number - 1;
-        m = total - m;
+
+        VisitorData m = {index, 0, params[index], params};
         clang_visitChildren(cursor, &visitunexposed, &m);
         data->order_number--;
         return CXChildVisit_Continue;
-    } 
+    }
     if (static_cast<CXCursorKind>(clang_getCursorKind(cursor)) !=
             CXCursor_IntegerLiteral &&
         static_cast<CXCursorKind>(clang_getCursorKind(cursor)) !=
@@ -460,36 +468,31 @@ enum CXChildVisitResult LightAnalysis::callVisitor(CXCursor cursor,
     }
     if (data->order_number > 0)
     {
-        int index = data->order_number - 1;
+
         if (static_cast<CXCursorKind>(clang_getCursorKind(cursor)) ==
                 CXCursor_IntegerLiteral &&
             params[index] == "i32")
         {
-            int m = data->order_number - 1;
-            m = total - m;
-            printf("%d param is int\n", m);
+            printf("%d param is int\n", index);
             CXSourceRange callRange = clang_getCursorExtent(cursor);
-            printSourceRange(callRange, "param" + std::to_string(m));
+            printSourceRange(callRange, "param" + std::to_string(index));
         }
         else if (static_cast<CXCursorKind>(clang_getCursorKind(cursor)) ==
                      CXCursor_BinaryOperator &&
-                 params[index] == "i32")
+                 (params[index] == "i32" || params[index] == "i64"))
         {
-            int m = index;
-            m = total - m;
-            printf("%d param is int\n", m);
+
+            printf("%d param is int\n", index);
             CXSourceRange callRange = clang_getCursorExtent(cursor);
-            printSourceRange(callRange, "param" + std::to_string(m));
+            printSourceRange(callRange, "param" + std::to_string(index));
         }
         else if (static_cast<CXCursorKind>(clang_getCursorKind(cursor)) ==
                      CXCursor_FloatingLiteral &&
                  params[index] == "float")
         {
-            int m = index;
-            m = total - m;
-            printf("%d param is float\n", m);
+            printf("%d param is float\n", index);
             CXSourceRange callRange = clang_getCursorExtent(cursor);
-            printSourceRange(callRange, "param" + std::to_string(m));
+            printSourceRange(callRange, "param" + std::to_string(index));
         }
         else
         {
@@ -503,13 +506,37 @@ enum CXChildVisitResult LightAnalysis::visitunexposed(CXCursor cursor,
                                                       CXCursor parent,
                                                       CXClientData clientData)
 {
-    int* count = (int*)clientData;
-
+    VisitorData* data = static_cast<VisitorData*>(clientData);
+    int index = data->order_number;
     if (static_cast<CXCursorKind>(clang_getCursorKind(cursor)) ==
-        CXCursor_FloatingLiteral)
+            CXCursor_FloatingLiteral &&
+        data->parameters[index] == "float")
     {
-
-        printf("%d param is float\n", *count);
+        printf("%d param is float\n", index);
+        CXSourceRange paramRange = clang_getCursorExtent(cursor);
+        printSourceRange(paramRange, "param" + std::to_string(index));
+    }
+    else if (static_cast<CXCursorKind>(clang_getCursorKind(cursor)) ==
+                 CXCursor_DeclRefExpr &&
+             (data->parameters[index] == "float*" ||
+              data->parameters[index] == "i32*" ||
+              data->parameters[index] == "i8*"))
+    {
+        printf("%d param is pointer\n", index);
+        CXSourceRange paramRange = clang_getCursorExtent(cursor);
+        printSourceRange(paramRange, "param" + std::to_string(index));
+    }
+    else if (static_cast<CXCursorKind>(clang_getCursorKind(cursor)) ==
+                 CXCursor_IntegerLiteral &&
+             data->parameters[index] == "i32")
+    {
+        printf("%d param is int\n", index);
+        CXSourceRange paramRange = clang_getCursorExtent(cursor);
+        printSourceRange(paramRange, "param" + std::to_string(index));
+    }
+    else
+    {
+        printf("%d param not match\n", index);
     }
     return CXChildVisit_Continue;
 }
