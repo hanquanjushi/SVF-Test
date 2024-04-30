@@ -38,44 +38,8 @@ void traverseOnSVFStmt(const ICFGNode* node)
     for (const SVFStmt* stmt : node->getSVFStmts())
     {
         std::string stmtstring = stmt->getValue()->toString();
-
-        if (const CallPE* callPE = SVFUtil::dyn_cast<CallPE>(stmt))
-        {
-            // To handle Call Edge
-            std::string callstring = callPE->getValue()->toString();
-            // std::string callinfo = callPE->getValue()->getSourceLoc();
-            CallICFGNode* callNode =
-                const_cast<CallICFGNode*>(callPE->getCallSite());
-            std::string callinfo = callNode->toString();
-            SVFInstruction* cs =
-                const_cast<SVFInstruction*>(callNode->getCallSite());
-            std::string m = cs->getSourceLoc();
-            //"{ \"ln\": 15, \"cl\": 12, \"fl\": \"test1.c\" }"
-            std::string::size_type pos = m.find("\"ln\":");
-            unsigned int num =
-                std::stoi(m.substr(pos + 5, m.find(",") - pos - 5));
-            std::regex re("@(\\w+)\\((.+)\\)");
-            std::smatch match;
-            std::string functionName;
-            std::vector<std::string> parameters;
-            if (std::regex_search(callstring, match, re) && match.size() > 2)
-            {
-                functionName = match.str(1);
-                std::string parametersStr = match.str(2);
-                std::stringstream ss(parametersStr);
-                std::string parameter;
-                while (std::getline(ss, parameter, ','))
-                {
-                    parameter.erase(0, parameter.find_first_not_of(' '));
-                    parameter.erase(parameter.find_last_not_of(' ') + 1);
-                    parameters.push_back(parameter);
-                }
-            }
-            lightAnalysis->findNodeOnTree(num, call_order, functionName,
-                                          parameters);
-        }
-
-        else if (const BranchStmt* branch = SVFUtil::dyn_cast<BranchStmt>(stmt))
+        // std::cout << stmtstring << std::endl;
+        if (const BranchStmt* branch = SVFUtil::dyn_cast<BranchStmt>(stmt))
         {
             std::string brstring = branch->getValue()->toString();
             SVFVar* branchVar = const_cast<SVFVar*>(branch->getBranchInst());
@@ -149,6 +113,39 @@ void traverseOnSVFStmt(const ICFGNode* node)
         {
             std::string retstring = retPE->getValue()->toString();
         }
+        /*    else if (const CallPE* callPE = SVFUtil::dyn_cast<CallPE>(stmt))
+           {
+               std::string callstring = callPE->getValue()->toString();
+               std::cout << callstring << std::endl;
+               CallICFGNode* callNode =
+                   const_cast<CallICFGNode*>(callPE->getCallSite());
+               std::string callinfo = callNode->toString();
+               SVFInstruction* cs =
+                   const_cast<SVFInstruction*>(callNode->getCallSite());
+               std::string m = cs->getSourceLoc();
+               std::string::size_type pos = m.find("\"ln\":");
+               unsigned int num =
+                   std::stoi(m.substr(pos + 5, m.find(",") - pos - 5));
+               std::regex re("@(\\w+)\\((.+)\\)");
+               std::smatch match;
+               std::string functionName;
+               std::vector<std::string> parameters;
+               if (std::regex_search(callstring, match, re) && match.size() > 2)
+               {
+                   functionName = match.str(1);
+                   std::string parametersStr = match.str(2);
+                   std::stringstream ss(parametersStr);
+                   std::string parameter;
+                   while (std::getline(ss, parameter, ','))
+                   {
+                       parameter.erase(0, parameter.find_first_not_of(' '));
+                       parameter.erase(parameter.find_last_not_of(' ') + 1);
+                       parameters.push_back(parameter);
+                   }
+               }
+               lightAnalysis->findNodeOnTree(num, call_order, functionName,
+                                             parameters);
+           } */
     }
 }
 int main(int argc, char** argv)
@@ -172,14 +169,86 @@ int main(int argc, char** argv)
 
     SVFModule* svfModule = LLVMModuleSet::buildSVFModule(moduleNameVec);
 
+    // 拿 svf value 有两种办法，一是从 svfmodule 拿到 svffunction 再拿到
+    // basicblock 最后拿到一个 instruction list，然后你一个一个遍历筛选需要的
+    // instruction，对于 call instruction 你可以用 getOperand 拿到它的参数
+    // 拿到basicblock:
+    auto str = SOURCEPATH();
+    auto lightAnalysis = new LightAnalysis(str);
+    for (const SVFFunction* F : svfModule->getFunctionSet())
+    {
+        for (const SVFBasicBlock* bb : F->getBasicBlockList())
+        {
+            for (const SVFInstruction* inst : bb->getInstructionList())
+            {
+                std::string inststring = inst->toString();
+                // std::cout << inststring << std::endl;
+                // 判断是不是SVFCallInst
+                // 当inststring的第一个单词或者第三个单词是call的时候，就是call指令
+                std::istringstream iss(inststring);
+                std::vector<std::string> words;
+                std::string word;
+                while (iss >> word)
+                {
+                    words.push_back(word);
+                }
+                int flag = 0;
+                if (words[0] == "call")
+                {
+                    if (words.size() >= 3 &&
+                        words[2] != "@llvm.dbg.declare(metadata")
+                    {
+                        flag = 1;
+                    }
+                }
+                else if (words.size() >= 3 && words[2] == "call")
+                {
+
+                    flag = 1;
+                }
+                if (flag == 0)
+                {
+                    continue;
+                }
+                if (flag == 1)
+                {
+                    std::string m = inst->getSourceLoc();
+                    //"{ \"ln\": 15, \"cl\": 12, \"fl\": \"test1.c\" }"
+                    std::string::size_type pos = m.find("\"ln\":");
+                    unsigned int num =
+                        std::stoi(m.substr(pos + 5, m.find(",") - pos - 5));
+                    std::regex re("@(\\w+)\\((.+)\\)");
+                    std::smatch match;
+                    std::string functionName;
+                    std::vector<std::string> parameters;
+                    if (std::regex_search(inststring, match, re) &&
+                        match.size() > 2)
+                    {
+                        functionName = match.str(1);
+                        std::string parametersStr = match.str(2);
+                        std::stringstream ss(parametersStr);
+                        std::string parameter;
+                        while (std::getline(ss, parameter, ','))
+                        {
+                            parameter.erase(0,
+                                            parameter.find_first_not_of(' '));
+                            parameter.erase(parameter.find_last_not_of(' ') +
+                                            1);
+                            parameters.push_back(parameter);
+                        }
+                    }
+                    std::cout << functionName <<std::endl;
+                    lightAnalysis->findNodeOnTree(num, call_order, functionName,
+                                                  parameters);
+                }
+            }
+        }
+    }
     SVF::SVFIRBuilder builder(svfModule);
     auto pag = builder.build();
     assert(pag && "pag cannot be nullptr!");
 
-    auto str = SOURCEPATH();
-    //  auto lightAnalysis = new LightAnalysis(str);
-
-    //  lightAnalysis->runOnSrc();
+    // lightAnalysis->runOnSrc();
     ICFG* icfg = pag->getICFG();
 
     for (const auto& it : *icfg)

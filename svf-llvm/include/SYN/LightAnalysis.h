@@ -5,13 +5,13 @@
 #ifndef SVF_LIGHTANALYSIS_H
 #define SVF_LIGHTANALYSIS_H
 
-#include <cstdio> 
-#include <unordered_map>
-#include <algorithm>
 #include "SVFIR/SVFValue.h"
 #include "SVFIR/SVFVariables.h"
 #include "clang-c/Index.h"
+#include <algorithm>
 #include <assert.h>
+#include <cstdio>
+#include <unordered_map>
 
 namespace SVF
 {
@@ -46,27 +46,42 @@ public:
     // this function is used to map the SVFValue to its corresponding AST node.
     void projection(const SVFValue*, const SVFVar*);
 
-    static enum CXChildVisitResult countChildren(CXCursor cursor,
-                                                 CXCursor parent,
-                                                 CXClientData clientData);
-
     static void printSourceRange(CXSourceRange range,
                                  const std::string& blockName);
+    
+    static enum CXChildVisitResult printAST(CXCursor cursor, CXCursor parent,
+                                            CXClientData clientData);
 
     static enum CXChildVisitResult cursorVisitor(CXCursor cursor,
                                                  CXCursor parent,
                                                  CXClientData client_data);
+    
+    static enum CXChildVisitResult countChildren(CXCursor cursor,
+                                                 CXCursor parent,
+                                                 CXClientData clientData);
+
+    static enum CXChildVisitResult forstmtVisitor(CXCursor cursor,
+                                                  CXCursor parent,
+                                                  CXClientData clientData);
+
+    static enum CXChildVisitResult whilestmtVisitor(CXCursor cursor,
+                                                    CXCursor parent,
+                                                    CXClientData clientData);
 
     static enum CXChildVisitResult ifstmtVisitor(CXCursor cursor,
-                                                   CXCursor parent,
-                                                   CXClientData clientData);
+                                                 CXCursor parent,
+                                                 CXClientData clientData);
+
+    static enum CXChildVisitResult visitunexposed(CXCursor cursor,
+                                                  CXCursor parent,
+                                                  CXClientData clientData);
 
     static enum CXChildVisitResult findIfElseScope(CXCursor cursor,
                                                    CXCursor parent,
                                                    CXClientData clientData);
 
     static enum CXChildVisitResult callVisitor(CXCursor cursor, CXCursor parent,
-                                       CXClientData clientData);
+                                               CXClientData clientData);
 
     static enum CXChildVisitResult astVisitor(CXCursor cursor, CXCursor parent,
                                               CXClientData client_data);

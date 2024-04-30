@@ -1,14 +1,17 @@
 ## News
 
-2024.4.23
+2024.4.30
 # 目前已经实现： 
-if、else、while、for语句处理
+1.if、else、while、for语句处理
+2.#include <unistd> read经过修正为__builtin__read后可以识别，但fread不适用此方法  
 
-目前只考虑含BinaryOperator的这些语句，还未考虑if(a)这种情况
 # 待实现： 
-1.#include <unistd> read fread  经过parse之后变化
-
-2.多文件项目编译成大的ir文件，指定value后能否知道文件的绝对地址，之后去parse原来的文件找到信息
+1.给定函数llvm function 指针 找到他的绝对路径
+2.函数的def和decl都在头文件 能不能找到头文件绝对路径
+如果只有声明在头文件，定义在c文件，能不能找到声明的绝对路径
+3.如果只给头文件，能不能用clang的api parse成ast
+4.如果一个头文件/.c只是语法正确，但不能编译a=b,a没有声明，得到ast
+ 
 
 
 
