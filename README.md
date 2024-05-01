@@ -1,22 +1,47 @@
 ## News
 
 配置gllvm：
+
 sudo apt  install golang-go
+
 go install github.com/SRI-CSL/gllvm/cmd/...@latest
+
 export PATH=$PATH:/home/your_name/go/bin
+
 source ~/.bashrc
+
 source ~/.profile 
 
+export PATH=$PATH:$(go env GOPATH)/bin
+
+使用gllvm :
+
+cmake -DCMAKE_C_COMPILER=gclang -DCMAKE_CXX_COMPILER=gclang++ -DCMAKE_BUILD_TYPE=Debug ..
+
+make
+
+get-bc program
+
+llvm-dis program.bc -o program.ll
+
 2024.4.30
+
 # 目前已经实现： 
+
 1.if、else、while、for语句处理
+
 2.#include <unistd> read经过修正为__builtin__read后可以识别，但fread不适用此方法  
 
 # 待实现： 
+
 1.给定函数llvm function 指针 找到他的绝对路径
+
 2.函数的def和decl都在头文件 能不能找到头文件绝对路径
+
 如果只有声明在头文件，定义在c文件，能不能找到声明的绝对路径
+
 3.如果只给头文件，能不能用clang的api parse成ast
+
 4.如果一个头文件/.c只是语法正确，但不能编译a=b,a没有声明，得到ast
  
 
