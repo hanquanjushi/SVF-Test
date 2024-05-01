@@ -90,7 +90,8 @@ public:
 
     void findNodeOnTree(unsigned int target_line, int order_number,
                         const std::string& functionName,
-                        const std::vector<std::string>& parameters);
+                        const std::vector<std::string>& parameters,
+                        std::string srcpathstring);
     static int getLineFromSVFSrcLocString(const std::string&);
 
     static int getColumnFromSVFSrcLocString(const std::string&);

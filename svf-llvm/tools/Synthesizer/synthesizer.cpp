@@ -67,8 +67,11 @@ void traverseOnSVFStmt(const ICFGNode* node)
                 std::string operation = conditionstring.substr(
                     spacePos + 1, nextSpacePos - spacePos - 1);
                 std::vector<std::string> parameters = {};
+                pos = conditionstring.find("\"fl\": \"");
+                std::string srcpath = conditionstring.substr(
+                    pos + 7, conditionstring.find("\" }") - pos - 7);
                 lightAnalysis->findNodeOnTree(num, branch_order, operation,
-                                              parameters);
+                                              parameters, srcpath);
             }
         }
 
@@ -148,6 +151,7 @@ void traverseOnSVFStmt(const ICFGNode* node)
            } */
     }
 }
+
 int main(int argc, char** argv)
 {
 
@@ -214,12 +218,18 @@ int main(int argc, char** argv)
                 {
                     std::string m = inst->getSourceLoc();
                     //"{ \"ln\": 15, \"cl\": 12, \"fl\": \"test1.c\" }"
+                    std::cout << m << std::endl;
                     std::string::size_type pos = m.find("\"ln\":");
                     unsigned int num =
                         std::stoi(m.substr(pos + 5, m.find(",") - pos - 5));
                     std::regex re("@(\\w+)\\((.+)\\)");
                     std::smatch match;
                     std::string functionName;
+                    // 取fl后面的内容作为路径
+                    pos = m.find("\"fl\": \"");
+                    std::string srcpath =
+                        m.substr(pos + 7, m.find("\" }") - pos - 7);
+                    std ::cout << srcpath << std::endl;
                     std::vector<std::string> parameters;
                     if (std::regex_search(inststring, match, re) &&
                         match.size() > 2)
@@ -237,9 +247,10 @@ int main(int argc, char** argv)
                             parameters.push_back(parameter);
                         }
                     }
-                    std::cout << functionName <<std::endl;
+                    std::cout << functionName << std::endl;
+
                     lightAnalysis->findNodeOnTree(num, call_order, functionName,
-                                                  parameters);
+                                                  parameters, srcpath);
                 }
             }
         }

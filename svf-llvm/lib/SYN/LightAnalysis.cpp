@@ -35,11 +35,12 @@ struct VisitorData
 
 void LightAnalysis::findNodeOnTree(unsigned int target_line, int order_number,
                                    const std::string& functionName,
-                                   const std::vector<std::string>& parameters)
+                                   const std::vector<std::string>& parameters
+                                   , std::string srcpathstring)
 {
     CXIndex index = clang_createIndex(0, 0);
     CXTranslationUnit unit = clang_parseTranslationUnit(
-        index, srcPath.c_str(), nullptr, 0, nullptr, 0, CXTranslationUnit_None);
+        index, (srcPath+srcpathstring).c_str(), nullptr, 0, nullptr, 0, CXTranslationUnit_None);
     assert(unit && "unit cannot be nullptr!");
     CXCursor cursor = clang_getTranslationUnitCursor(unit);
     if (order_number == 0)
