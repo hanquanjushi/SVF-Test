@@ -183,10 +183,25 @@ int main(int argc, char** argv)
     auto lightAnalysis = new LightAnalysis(str);
     for (const SVFFunction* F : svfModule->getFunctionSet())
     {
+        std::string functionstring = F->toString();
+        std::cout << functionstring << std::endl;
         std::string functionName = F->getName();
+        std::cout << functionName << std::endl;
         std::string m = F->getSourceLoc();
-        std::cout << m << std::endl;
-        std ::cout << functionName << std::endl;
+        if (m != "")
+        {
+            std::cout << m << std::endl;
+            //{ "ln": 151, "file": "include/Smelt.h" }
+            std::string::size_type pos = m.find("\"ln\":");
+            unsigned int num =
+                std::stoi(m.substr(pos + 5, m.find(",") - pos - 5));
+            std::cout << num << std::endl;
+            pos = m.find("\"file\": \"");
+            std::string srcpath = m.substr(pos + 9, m.find("\" }") - pos - 9);
+            std::cout << srcpath << std::endl;
+            lightAnalysis->findNodeOnTree(num, define_order, functionName, {},
+                                          srcpath);
+        }
         for (const SVFBasicBlock* bb : F->getBasicBlockList())
         {
             for (const SVFInstruction* inst : bb->getInstructionList())
@@ -247,10 +262,6 @@ int main(int argc, char** argv)
                         }
                     }
                     std::cout << functionName << std::endl;
-                    if (functionName == "Smelt_parse_string")
-                    {
-                        printf("1\n");
-                    }
                     lightAnalysis->findNodeOnTree(num, call_order, functionName,
                                                   parameters, srcpath);
                 }
@@ -260,9 +271,7 @@ int main(int argc, char** argv)
     SVF::SVFIRBuilder builder(svfModule);
     auto pag = builder.build();
     assert(pag && "pag cannot be nullptr!");
-
     ICFG* icfg = pag->getICFG();
-
     for (const auto& it : *icfg)
     {
         const ICFGNode* node = it.second;

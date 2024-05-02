@@ -174,38 +174,18 @@ enum CXChildVisitResult LightAnalysis::astVisitor(CXCursor curCursor,
                 CXCursor_FunctionDecl)
             {
                 std::string functionName = data->functionName;
-                std::vector<std::string> params_type;
                 std::cout << "Function name: " << functionName << "\n";
-                std::vector<std::string> parameters = data->parameters;
-                for (auto& parameter : parameters)
-                {
-                    size_t pos = parameter.find(' ');
-                    if (pos != std::string::npos)
-                    {
-                        params_type.push_back(parameter.substr(0, pos));
-                    }
-                    else
-                    {
-                        params_type.push_back(parameter);
-                    }
-                } 
-                for (auto& param : params_type)
-                {
-                    std::cout << "param: " << param << "\n";
-                }
                 CXString cursor_name = clang_getCursorSpelling(curCursor);
                 std::string current_function_name =
                     clang_getCString(cursor_name);
-
                 if (current_function_name == functionName ||
                     current_function_name == "__builtin__" + functionName)
                 {
                     std::cout << "Function name matches with the target "
                                  "function name.\n";
-
                     CXSourceRange defineRange =
                         clang_getCursorExtent(curCursor);
-                    printSourceRange(defineRange, "scope_where_call_is");
+                    printSourceRange(defineRange, "scope where function defined is");
                 }
                 clang_disposeString(cursor_name);
             }
