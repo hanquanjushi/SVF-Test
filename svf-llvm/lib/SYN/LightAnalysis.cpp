@@ -35,12 +35,13 @@ struct VisitorData
 
 void LightAnalysis::findNodeOnTree(unsigned int target_line, int order_number,
                                    const std::string& functionName,
-                                   const std::vector<std::string>& parameters
-                                   , std::string srcpathstring)
+                                   const std::vector<std::string>& parameters,
+                                   std::string srcpathstring)
 {
     CXIndex index = clang_createIndex(0, 0);
     CXTranslationUnit unit = clang_parseTranslationUnit(
-        index, (srcPath+srcpathstring).c_str(), nullptr, 0, nullptr, 0, CXTranslationUnit_None);
+        index, (srcPath + srcpathstring).c_str(), nullptr, 0, nullptr, 0,
+        CXTranslationUnit_None);
     assert(unit && "unit cannot be nullptr!");
     CXCursor cursor = clang_getTranslationUnitCursor(unit);
     if (order_number == 0)
@@ -50,6 +51,11 @@ void LightAnalysis::findNodeOnTree(unsigned int target_line, int order_number,
         clang_visitChildren(cursor, &astVisitor, &data);
     }
     else if (order_number == 1)
+    {
+        VisitorData data{order_number, target_line, 0, functionName};
+        clang_visitChildren(cursor, &astVisitor, &data);
+    }
+    else if (order_number == 2)
     {
         VisitorData data{order_number, target_line, 0, functionName};
         clang_visitChildren(cursor, &astVisitor, &data);
@@ -95,8 +101,7 @@ enum CXChildVisitResult LightAnalysis::astVisitor(CXCursor curCursor,
                     {
                         params_type.push_back(parameter);
                     }
-                }
-                // 打印params_type
+                } 
                 for (auto& param : params_type)
                 {
                     std::cout << "param: " << param << "\n";
@@ -161,6 +166,48 @@ enum CXChildVisitResult LightAnalysis::astVisitor(CXCursor curCursor,
                 clang_visitChildren(curCursor, &countChildren, &childCount);
                 VisitorData data{0, childCount, 0, operation, {}};
                 clang_visitChildren(curCursor, &forstmtVisitor, &data);
+            }
+            break;
+        }
+        case 2: {
+            if (static_cast<CXCursorKind>(clang_getCursorKind(curCursor)) ==
+                CXCursor_FunctionDecl)
+            {
+                std::string functionName = data->functionName;
+                std::vector<std::string> params_type;
+                std::cout << "Function name: " << functionName << "\n";
+                std::vector<std::string> parameters = data->parameters;
+                for (auto& parameter : parameters)
+                {
+                    size_t pos = parameter.find(' ');
+                    if (pos != std::string::npos)
+                    {
+                        params_type.push_back(parameter.substr(0, pos));
+                    }
+                    else
+                    {
+                        params_type.push_back(parameter);
+                    }
+                } 
+                for (auto& param : params_type)
+                {
+                    std::cout << "param: " << param << "\n";
+                }
+                CXString cursor_name = clang_getCursorSpelling(curCursor);
+                std::string current_function_name =
+                    clang_getCString(cursor_name);
+
+                if (current_function_name == functionName ||
+                    current_function_name == "__builtin__" + functionName)
+                {
+                    std::cout << "Function name matches with the target "
+                                 "function name.\n";
+
+                    CXSourceRange defineRange =
+                        clang_getCursorExtent(curCursor);
+                    printSourceRange(defineRange, "scope_where_call_is");
+                }
+                clang_disposeString(cursor_name);
             }
             break;
         }

@@ -24,13 +24,16 @@
 using namespace llvm;
 using namespace SVF;
 
+#define call_order 0
+#define branch_order 1
+#define define_order 2
+
 static Option<std::string> SOURCEPATH("srcpath",
                                       "Path for source code to transform", "");
 
 static Option<std::string> NEWSPECPATH("newspec",
                                        "Path for new specification file", "");
-#define call_order 0
-#define branch_order 1
+
 void traverseOnSVFStmt(const ICFGNode* node)
 {
     auto str = SOURCEPATH();
@@ -38,7 +41,6 @@ void traverseOnSVFStmt(const ICFGNode* node)
     for (const SVFStmt* stmt : node->getSVFStmts())
     {
         std::string stmtstring = stmt->getValue()->toString();
-        // std::cout << stmtstring << std::endl;
         if (const BranchStmt* branch = SVFUtil::dyn_cast<BranchStmt>(stmt))
         {
             std::string brstring = branch->getValue()->toString();
@@ -181,14 +183,16 @@ int main(int argc, char** argv)
     auto lightAnalysis = new LightAnalysis(str);
     for (const SVFFunction* F : svfModule->getFunctionSet())
     {
+        std::string functionName = F->getName();
+        std::string m = F->getSourceLoc();
+        std::cout << m << std::endl;
+        std ::cout << functionName << std::endl;
         for (const SVFBasicBlock* bb : F->getBasicBlockList())
         {
             for (const SVFInstruction* inst : bb->getInstructionList())
             {
                 std::string inststring = inst->toString();
-                // std::cout << inststring << std::endl;
-                // 判断是不是SVFCallInst
-                // 当inststring的第一个单词或者第三个单词是call的时候，就是call指令
+                std ::cout << inststring << std::endl;
                 std::istringstream iss(inststring);
                 std::vector<std::string> words;
                 std::string word;
@@ -197,25 +201,21 @@ int main(int argc, char** argv)
                     words.push_back(word);
                 }
                 int flag = 0;
-                if (words[0] == "call")
-                {
-                    if (words.size() >= 3 &&
-                        words[2] != "@llvm.dbg.declare(metadata")
-                    {
-                        flag = 1;
-                    }
-                }
-                else if (words.size() >= 3 && words[2] == "call")
-                {
 
+                if ((words[0] == "call" && words.size() >= 3 &&
+                     words[2] != "@llvm.dbg.declare(metadata") ||
+                    (words.size() >= 3 && words[2] == "call"))
+                {
                     flag = 1;
                 }
                 if (flag == 0)
                 {
                     continue;
                 }
+
                 if (flag == 1)
                 {
+                    std::cout << inststring << std::endl;
                     std::string m = inst->getSourceLoc();
                     //"{ \"ln\": 15, \"cl\": 12, \"fl\": \"test1.c\" }"
                     std::cout << m << std::endl;
@@ -225,7 +225,6 @@ int main(int argc, char** argv)
                     std::regex re("@(\\w+)\\((.+)\\)");
                     std::smatch match;
                     std::string functionName;
-                    // 取fl后面的内容作为路径
                     pos = m.find("\"fl\": \"");
                     std::string srcpath =
                         m.substr(pos + 7, m.find("\" }") - pos - 7);
@@ -248,7 +247,10 @@ int main(int argc, char** argv)
                         }
                     }
                     std::cout << functionName << std::endl;
-
+                    if (functionName == "Smelt_parse_string")
+                    {
+                        printf("1\n");
+                    }
                     lightAnalysis->findNodeOnTree(num, call_order, functionName,
                                                   parameters, srcpath);
                 }
@@ -259,7 +261,6 @@ int main(int argc, char** argv)
     auto pag = builder.build();
     assert(pag && "pag cannot be nullptr!");
 
-    // lightAnalysis->runOnSrc();
     ICFG* icfg = pag->getICFG();
 
     for (const auto& it : *icfg)
