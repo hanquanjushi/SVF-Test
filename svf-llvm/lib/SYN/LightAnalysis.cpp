@@ -42,6 +42,10 @@ void LightAnalysis::findNodeOnTree(unsigned int target_line, int order_number,
     CXTranslationUnit unit = clang_parseTranslationUnit(
         index, (srcPath + srcpathstring).c_str(), nullptr, 0, nullptr, 0,
         CXTranslationUnit_None);
+    if (srcpathstring[0] == '/')
+    {
+        return;
+    }
     assert(unit && "unit cannot be nullptr!");
     CXCursor cursor = clang_getTranslationUnitCursor(unit);
     if (order_number == 0)
@@ -101,7 +105,7 @@ enum CXChildVisitResult LightAnalysis::astVisitor(CXCursor curCursor,
                     {
                         params_type.push_back(parameter);
                     }
-                } 
+                }
                 for (auto& param : params_type)
                 {
                     std::cout << "param: " << param << "\n";
@@ -151,6 +155,7 @@ enum CXChildVisitResult LightAnalysis::astVisitor(CXCursor curCursor,
                 CXCursor_IfStmt)
             {
                 VisitorData data{0, 0, 0, operation, {}};
+
                 clang_visitChildren(curCursor, &ifstmtVisitor, &data);
             }
             else if (static_cast<CXCursorKind>(
@@ -185,7 +190,8 @@ enum CXChildVisitResult LightAnalysis::astVisitor(CXCursor curCursor,
                                  "function name.\n";
                     CXSourceRange defineRange =
                         clang_getCursorExtent(curCursor);
-                    printSourceRange(defineRange, "scope where function defined is");
+                    printSourceRange(defineRange,
+                                     "scope where function defined is");
                 }
                 clang_disposeString(cursor_name);
             }
@@ -397,41 +403,29 @@ enum CXChildVisitResult LightAnalysis::ifstmtVisitor(CXCursor cursor,
             CXSourceRange range = clang_getCursorExtent(cursor);
             CXTranslationUnit TU = clang_Cursor_getTranslationUnit(cursor);
             clang_tokenize(TU, range, &tokens, &numTokens);
-            int flag = 0;
+
             if (numTokens > 1)
             {
                 CXString op_name = clang_getTokenSpelling(TU, tokens[1]);
                 const char* op_string = clang_getCString(op_name);
+                std::cout << "operator is " << op_string << std::endl;
                 if (strcmp(op_string, "<") == 0 && operation == "slt")
                 {
                     std::cout << "find <" << std::endl;
-                    flag = 1;
                 }
                 else if (strcmp(op_string, "<=") == 0 && operation == "sle")
                 {
                     std::cout << "find <=" << std::endl;
-                    flag = 1;
                 }
                 else if (strcmp(op_string, ">") == 0 && operation == "sgt")
                 {
                     std::cout << "find >" << std::endl;
-                    flag = 1;
                 }
                 else if (strcmp(op_string, ">=") == 0 && operation == "sge")
                 {
                     std::cout << "find >=" << std::endl;
-                    flag = 1;
-                }
-                else if (strcmp(op_string, "+") == 0 && operation == "ne")
-                {
-                    flag = 1;
-                }
-                else if (strcmp(op_string, "-") == 0 && operation == "ne")
-                {
-                    flag = 1;
                 }
             }
-            printf("flag = %d\n", flag);
         }
         else if (static_cast<CXCursorKind>(clang_getCursorKind(cursor)) ==
                  CXCursor_UnaryOperator)
@@ -455,11 +449,15 @@ enum CXChildVisitResult LightAnalysis::ifstmtVisitor(CXCursor cursor,
             }
             printf("flag = %d\n", flag);
         }
+        CXSourceRange range = clang_getCursorExtent(parent);
+        printSourceRange(range, "whole_if");
     }
     if (count == 2)
     {
         CXSourceRange ifrange = clang_getCursorExtent(cursor);
         printSourceRange(ifrange, "if");
+        CXSourceRange range = clang_getCursorExtent(parent);
+        printSourceRange(range, "whole_if");
     }
     if (count == 3)
     {
@@ -486,7 +484,6 @@ enum CXChildVisitResult LightAnalysis::callVisitor(CXCursor cursor,
     if (m == CXCursor_UnexposedExpr && data->order_number > 0 &&
         visit_time != 0)
     {
-
         VisitorData m = {index, 0, 0, params[index], params};
         clang_visitChildren(cursor, &visitunexposed, &m);
         data->order_number--;

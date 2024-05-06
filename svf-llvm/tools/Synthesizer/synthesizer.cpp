@@ -70,8 +70,13 @@ void traverseOnSVFStmt(const ICFGNode* node)
                     spacePos + 1, nextSpacePos - spacePos - 1);
                 std::vector<std::string> parameters = {};
                 pos = conditionstring.find("\"fl\": \"");
+                if (pos == std::string::npos)
+                { 
+                    return;
+                }
                 std::string srcpath = conditionstring.substr(
                     pos + 7, conditionstring.find("\" }") - pos - 7);
+                std ::cout << srcpath << std::endl;
                 lightAnalysis->findNodeOnTree(num, branch_order, operation,
                                               parameters, srcpath);
             }
@@ -190,7 +195,6 @@ int main(int argc, char** argv)
         std::string m = F->getSourceLoc();
         if (m != "")
         {
-            std::cout << m << std::endl;
             //{ "ln": 151, "file": "include/Smelt.h" }
             std::string::size_type pos = m.find("\"ln\":");
             unsigned int num =
@@ -207,7 +211,7 @@ int main(int argc, char** argv)
             for (const SVFInstruction* inst : bb->getInstructionList())
             {
                 std::string inststring = inst->toString();
-                std ::cout << inststring << std::endl;
+                // std ::cout << inststring << std::endl;
                 std::istringstream iss(inststring);
                 std::vector<std::string> words;
                 std::string word;
@@ -230,10 +234,13 @@ int main(int argc, char** argv)
 
                 if (flag == 1)
                 {
-                    std::cout << inststring << std::endl;
+                    //    std::cout << inststring << std::endl;
                     std::string m = inst->getSourceLoc();
                     //"{ \"ln\": 15, \"cl\": 12, \"fl\": \"test1.c\" }"
-                    std::cout << m << std::endl;
+                    if (m == "")
+                    {
+                        continue;
+                    }
                     std::string::size_type pos = m.find("\"ln\":");
                     unsigned int num =
                         std::stoi(m.substr(pos + 5, m.find(",") - pos - 5));
@@ -243,7 +250,7 @@ int main(int argc, char** argv)
                     pos = m.find("\"fl\": \"");
                     std::string srcpath =
                         m.substr(pos + 7, m.find("\" }") - pos - 7);
-                    std ::cout << srcpath << std::endl;
+
                     std::vector<std::string> parameters;
                     if (std::regex_search(inststring, match, re) &&
                         match.size() > 2)
@@ -261,7 +268,12 @@ int main(int argc, char** argv)
                             parameters.push_back(parameter);
                         }
                     }
+                    if (functionName == "")
+                    {
+                        continue;
+                    }
                     std::cout << functionName << std::endl;
+                    std ::cout << srcpath << std::endl;
                     lightAnalysis->findNodeOnTree(num, call_order, functionName,
                                                   parameters, srcpath);
                 }
