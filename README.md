@@ -6,11 +6,7 @@ sudo apt  install golang-go
 
 go install github.com/SRI-CSL/gllvm/cmd/...@latest
 
-export PATH=$PATH:/home/your_name/go/bin
-
-source ~/.bashrc
-
-source ~/.profile 
+nano ~/.bashrc 
 
 export PATH=$PATH:$(go env GOPATH)/bin
 
