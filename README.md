@@ -20,7 +20,7 @@ get-bc program
 
 llvm-dis program.bc -o program.ll
 
-2024.4.30
+2024.5.8
 
 # 目前已经实现： 
 
@@ -28,17 +28,15 @@ llvm-dis program.bc -o program.ll
 
 2.#include <unistd> read经过修正为__builtin__read后可以识别，但fread不适用此方法  
 
-# 待实现： 
+3.给定函数llvm function 指针 找到他的绝对路径
 
-1.给定函数llvm function 指针 找到他的绝对路径
-
-2.函数的def和decl都在头文件 能不能找到头文件绝对路径
+4.函数的def和decl都在头文件 能不能找到头文件绝对路径
 
 如果只有声明在头文件，定义在c文件，能不能找到声明的绝对路径
 
-3.如果只给头文件，能不能用clang的api parse成ast
+5.如果只给头文件，能不能用clang的api parse成ast
 
-4.如果一个头文件/.c只是语法正确，但不能编译a=b,a没有声明，得到ast
+6.如果一个头文件/.c只是语法正确，但不能编译a=b,a没有声明，得到ast
  
 
 

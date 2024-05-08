@@ -634,3 +634,40 @@ enum CXChildVisitResult LightAnalysis::countChildren(CXCursor cursor,
     (*count)++;
     return CXChildVisit_Continue;
 }
+
+void Modification::addNewCodeSnippet(std::string sourcepath,
+                                     const SVFValue* startInst,
+                                     const SVFValue* endInst, std::string str)
+{
+
+    auto lightAnalysis = new LightAnalysis(sourcepath);
+    std::string location = startInst->getSourceLoc();
+    if (location == "")
+    {
+        return;
+    }
+    std::string::size_type pos = location.find("\"ln\":");
+    unsigned int num =
+        std::stoi(location.substr(pos + 5, location.find(",") - pos - 5));
+    SVFVar* conditionVar = const_cast<SVFVar*>(branch->getCondition());
+    std::string conditionstring = conditionVar->getValue()->toString();
+    std::size_t icmpPos = conditionstring.find("icmp");
+    if (icmpPos != std::string::npos)
+    {
+        std::size_t spacePos = conditionstring.find(" ", icmpPos);
+        std::size_t nextSpacePos = conditionstring.find(" ", spacePos + 1);
+        std::string operation =
+            conditionstring.substr(spacePos + 1, nextSpacePos - spacePos - 1);
+        std::vector<std::string> parameters = {};
+        pos = conditionstring.find("\"fl\": \"");
+        if (pos == std::string::npos)
+        {
+            return;
+        }
+        std::string srcpath = conditionstring.substr(
+            pos + 7, conditionstring.find("\" }") - pos - 7);
+        std ::cout << srcpath << std::endl;
+        lightAnalysis->findNodeOnTree(num, branch_order, operation, parameters,
+                                      srcpath);
+    }
+}
