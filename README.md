@@ -38,7 +38,23 @@ llvm-dis program.bc -o program.ll
 
 6.如果一个头文件/.c只是语法正确，但不能编译a=b,a没有声明，得到ast
  
+# 待完成
 
+1.将文件夹下所有.c和.h文件转换成string oracleText，对应workText，并对每个文件维护一个lineOffsetMap记录源文件哪一行对应oracleText的哪一行
+
+2.实现 void deleteEitherBranch(const SVFValue* branchInst, bool condValue);
+      void deleteBranch(const SVFValue* branchInst);   
+      void deleteLoop(const SVFValue* inst);
+      void deleteStmt(const SVFValue* inst);
+
+3.实现    
+    void addNewCodeSnippet(std::string sourcepath, const SVFValue* startInst, const SVFValue* endInst, std::string str);
+
+    void addNewCodeSnippetAfter(std::string sourcepath,
+                                const SVFValue* startInst, std::string str);
+
+    void addNewCodeSnippetBefore(std::string sourcepath,
+                                 const SVFValue* endInst, std::string str);
 
 
 * <b>SVF now supports LLVM-13.0.0 (Thank [Shengjie Xu](https://github.com/xushengj) for his help!). </b>
