@@ -1,4 +1,5 @@
-//===- LLVMModule.h -- LLVM Module class-----------------------------------------//
+//===- LLVMModule.h -- LLVM Module
+// class-----------------------------------------//
 //
 //                     SVF: Static Value-Flow Analysis
 //
@@ -31,8 +32,8 @@
 #define INCLUDE_SVF_FE_LLVMMODULE_H_
 
 #include "SVF-LLVM/BasicTypes.h"
-#include "SVFIR/SVFValue.h"
 #include "SVFIR/SVFModule.h"
+#include "SVFIR/SVFValue.h"
 #include "Util/Options.h"
 
 namespace SVF
@@ -46,7 +47,7 @@ class LLVMModuleSet
     friend class SVFIRBuilder;
 
 public:
-
+    static std::vector<std::string> supportedAPIs;
     typedef std::vector<const Function*> FunctionSetType;
     typedef Map<const Function*, const Function*> FunDeclToDefMapTy;
     typedef Map<const Function*, FunctionSetType> FunDefToDeclsMapTy;
@@ -61,7 +62,7 @@ public:
     typedef Map<const SVFValue*, const Value*> SVFValue2LLVMValueMap;
     typedef Map<const Type*, SVFType*> LLVMType2SVFTypeMap;
     typedef Map<const Type*, StInfo*> Type2TypeInfoMap;
-    typedef Map<const Function*,  std::vector<std::string>> Fun2AnnoMap;
+    typedef Map<const Function*, std::vector<std::string>> Fun2AnnoMap;
 
 private:
     static LLVMModuleSet* llvmModuleSet;
@@ -76,14 +77,16 @@ private:
     FunDeclToDefMapTy FunDeclToDefMap;
     /// Function definition to function declaration map
     FunDefToDeclsMapTy FunDefToDeclsMap;
-    /// Record some "sse_" function declarations used in other ext function definition, e.g., svf_ext_foo(), and svf_ext_foo() used in app functions
+    /// Record some "sse_" function declarations used in other ext function
+    /// definition, e.g., svf_ext_foo(), and svf_ext_foo() used in app functions
     FunctionSetType ExtFuncsVec;
     /// Record annotations of function in extapi.bc
     Fun2AnnoMap ExtFun2Annotations;
     /// Global definition to a rep definition map
     GlobalDefToRepMapTy GlobalDefToRepMap;
 
-    LLVMFun2SVFFunMap LLVMFunc2SVFFunc; ///< Map an LLVM Function to an SVF Function
+    LLVMFun2SVFFunMap
+        LLVMFunc2SVFFunc; ///< Map an LLVM Function to an SVF Function
     LLVMBB2SVFBBMap LLVMBB2SVFBB;
     LLVMInst2SVFInstMap LLVMInst2SVFInst;
     LLVMArgument2SVFArgumentMap LLVMArgument2SVFArgument;
@@ -115,11 +118,13 @@ public:
         llvmModuleSet = nullptr;
     }
 
-    // Build an SVF module from a given LLVM Module instance (for use e.g. in a LLVM pass)
+    // Build an SVF module from a given LLVM Module instance (for use e.g. in a
+    // LLVM pass)
     static SVFModule* buildSVFModule(Module& mod);
 
     // Build an SVF module from the bitcode files provided in `moduleNameVec`
-    static SVFModule* buildSVFModule(const std::vector<std::string>& moduleNameVec);
+    static SVFModule* buildSVFModule(
+        const std::vector<std::string>& moduleNameVec);
 
     inline SVFModule* getSVFModule()
     {
@@ -138,12 +143,12 @@ public:
         return modules;
     }
 
-    Module *getModule(u32_t idx) const
+    Module* getModule(u32_t idx) const
     {
         return &getModuleRef(idx);
     }
 
-    Module &getModuleRef(u32_t idx) const
+    Module& getModuleRef(u32_t idx) const
     {
         assert(idx < getModuleNum() && "Out of range.");
         return modules[idx];
@@ -155,86 +160,94 @@ public:
     inline void addFunctionMap(const Function* func, SVFFunction* svfFunc)
     {
         LLVMFunc2SVFFunc[func] = svfFunc;
-        setValueAttr(func,svfFunc);
+        setValueAttr(func, svfFunc);
     }
     inline void addBasicBlockMap(const BasicBlock* bb, SVFBasicBlock* svfBB)
     {
         LLVMBB2SVFBB[bb] = svfBB;
-        setValueAttr(bb,svfBB);
+        setValueAttr(bb, svfBB);
     }
-    inline void addInstructionMap(const Instruction* inst, SVFInstruction* svfInst)
+    inline void addInstructionMap(const Instruction* inst,
+                                  SVFInstruction* svfInst)
     {
         LLVMInst2SVFInst[inst] = svfInst;
-        setValueAttr(inst,svfInst);
+        setValueAttr(inst, svfInst);
     }
     inline void addArgumentMap(const Argument* arg, SVFArgument* svfArg)
     {
         LLVMArgument2SVFArgument[arg] = svfArg;
-        setValueAttr(arg,svfArg);
+        setValueAttr(arg, svfArg);
     }
-    inline void addGlobalValueMap(const GlobalValue* glob, SVFGlobalValue* svfglob)
+    inline void addGlobalValueMap(const GlobalValue* glob,
+                                  SVFGlobalValue* svfglob)
     {
         LLVMConst2SVFConst[glob] = svfglob;
-        setValueAttr(glob,svfglob);
+        setValueAttr(glob, svfglob);
     }
-    inline void addConstantDataMap(const ConstantData* cd, SVFConstantData* svfcd)
+    inline void addConstantDataMap(const ConstantData* cd,
+                                   SVFConstantData* svfcd)
     {
         LLVMConst2SVFConst[cd] = svfcd;
-        setValueAttr(cd,svfcd);
+        setValueAttr(cd, svfcd);
     }
     inline void addOtherConstantMap(const Constant* cons, SVFConstant* svfcons)
     {
         LLVMConst2SVFConst[cons] = svfcons;
-        setValueAttr(cons,svfcons);
+        setValueAttr(cons, svfcons);
     }
     inline void addOtherValueMap(const Value* ov, SVFOtherValue* svfov)
     {
         LLVMValue2SVFOtherValue[ov] = svfov;
-        setValueAttr(ov,svfov);
+        setValueAttr(ov, svfov);
     }
 
     SVFValue* getSVFValue(const Value* value);
 
     const Value* getLLVMValue(const SVFValue* value) const
     {
-        SVFValue2LLVMValueMap::const_iterator it = SVFValue2LLVMValue.find(value);
-        assert(it!=SVFValue2LLVMValue.end() && "can't find corresponding llvm value!");
+        SVFValue2LLVMValueMap::const_iterator it =
+            SVFValue2LLVMValue.find(value);
+        assert(it != SVFValue2LLVMValue.end() &&
+               "can't find corresponding llvm value!");
         return it->second;
     }
 
     inline SVFFunction* getSVFFunction(const Function* fun) const
     {
         LLVMFun2SVFFunMap::const_iterator it = LLVMFunc2SVFFunc.find(fun);
-        assert(it!=LLVMFunc2SVFFunc.end() && "SVF Function not found!");
+        assert(it != LLVMFunc2SVFFunc.end() && "SVF Function not found!");
         return it->second;
     }
 
     inline SVFBasicBlock* getSVFBasicBlock(const BasicBlock* bb) const
     {
         LLVMBB2SVFBBMap::const_iterator it = LLVMBB2SVFBB.find(bb);
-        assert(it!=LLVMBB2SVFBB.end() && "SVF BasicBlock not found!");
+        assert(it != LLVMBB2SVFBB.end() && "SVF BasicBlock not found!");
         return it->second;
     }
 
     inline SVFInstruction* getSVFInstruction(const Instruction* inst) const
     {
         LLVMInst2SVFInstMap::const_iterator it = LLVMInst2SVFInst.find(inst);
-        assert(it!=LLVMInst2SVFInst.end() && "SVF Instruction not found!");
+        assert(it != LLVMInst2SVFInst.end() && "SVF Instruction not found!");
         return it->second;
     }
 
     inline SVFArgument* getSVFArgument(const Argument* arg) const
     {
-        LLVMArgument2SVFArgumentMap::const_iterator it = LLVMArgument2SVFArgument.find(arg);
-        assert(it!=LLVMArgument2SVFArgument.end() && "SVF Argument not found!");
+        LLVMArgument2SVFArgumentMap::const_iterator it =
+            LLVMArgument2SVFArgument.find(arg);
+        assert(it != LLVMArgument2SVFArgument.end() &&
+               "SVF Argument not found!");
         return it->second;
     }
 
     inline SVFGlobalValue* getSVFGlobalValue(const GlobalValue* g) const
     {
         LLVMConst2SVFConstMap::const_iterator it = LLVMConst2SVFConst.find(g);
-        assert(it!=LLVMConst2SVFConst.end() && "SVF Global not found!");
-        assert(SVFUtil::isa<SVFGlobalValue>(it->second) && "not a SVFGlobal type!");
+        assert(it != LLVMConst2SVFConst.end() && "SVF Global not found!");
+        assert(SVFUtil::isa<SVFGlobalValue>(it->second) &&
+               "not a SVFGlobal type!");
         return SVFUtil::cast<SVFGlobalValue>(it->second);
     }
 
@@ -246,10 +259,13 @@ public:
     /// Remove unused function in extapi.bc module
     bool isCalledExtFunction(Function* func)
     {
-        /// if this function func defined in extapi.bc but never used in application code (without any corresponding declared functions).
-        if (func->getParent()->getName().str() == ExtAPI::getExtAPI()->getExtBcPath()
-                && FunDefToDeclsMap.find(func) == FunDefToDeclsMap.end()
-                && std::find(ExtFuncsVec.begin(), ExtFuncsVec.end(), func) == ExtFuncsVec.end())
+        /// if this function func defined in extapi.bc but never used in
+        /// application code (without any corresponding declared functions).
+        if (func->getParent()->getName().str() ==
+                ExtAPI::getExtAPI()->getExtBcPath() &&
+            FunDefToDeclsMap.find(func) == FunDefToDeclsMap.end() &&
+            std::find(ExtFuncsVec.begin(), ExtFuncsVec.end(), func) ==
+                ExtFuncsVec.end())
         {
             return true;
         }
@@ -290,11 +306,11 @@ public:
 
     bool hasDeclaration(const Function* fun) const
     {
-        if(fun->isDeclaration() && !hasDefinition(fun))
+        if (fun->isDeclaration() && !hasDefinition(fun))
             return false;
 
         const Function* funDef = fun;
-        if(fun->isDeclaration() && hasDefinition(fun))
+        if (fun->isDeclaration() && hasDefinition(fun))
             funDef = getDefinition(fun);
 
         FunDefToDeclsMapTy::const_iterator it = FunDefToDeclsMap.find(funDef);
@@ -304,11 +320,12 @@ public:
     const FunctionSetType& getDeclaration(const Function* fun) const
     {
         const Function* funDef = fun;
-        if(fun->isDeclaration() && hasDefinition(fun))
+        if (fun->isDeclaration() && hasDefinition(fun))
             funDef = getDefinition(fun);
 
         FunDefToDeclsMapTy::const_iterator it = FunDefToDeclsMap.find(funDef);
-        assert(it != FunDefToDeclsMap.end() && "does not have a function definition (body)?");
+        assert(it != FunDefToDeclsMap.end() &&
+               "does not have a function definition (body)?");
         return it->second;
     }
 
@@ -319,7 +336,7 @@ public:
         return it != GlobalDefToRepMap.end();
     }
 
-    GlobalVariable *getGlobalRep(const GlobalVariable* val) const
+    GlobalVariable* getGlobalRep(const GlobalVariable* val) const
     {
         GlobalDefToRepMapTy::const_iterator it = GlobalDefToRepMap.find(val);
         assert(it != GlobalDefToRepMap.end() && "has no rep?");
@@ -361,10 +378,12 @@ private:
     /// Collect simple type (non-aggregate) info
     StInfo* collectSimpleTypeInfo(const Type* T);
 
-    std::vector<const Function*> getLLVMGlobalFunctions(const GlobalVariable* global);
+    std::vector<const Function*> getLLVMGlobalFunctions(
+        const GlobalVariable* global);
 
     void loadModules(const std::vector<std::string>& moduleNameVec);
-    // Loads ExtAPI bitcode file; uses LLVMContext made while loading module bitcode files or from Module
+    // Loads ExtAPI bitcode file; uses LLVMContext made while loading module
+    // bitcode files or from Module
     void loadExtAPIModules();
     void addSVFMain();
 
