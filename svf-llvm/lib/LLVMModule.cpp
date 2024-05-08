@@ -172,6 +172,7 @@ void LLVMModuleSet::createSVFDataStructure()
     // candidateDecls is the vector for all used declared functions
     std::vector<const Function*> candidateDefs, candidateDecls;
 
+    // module to analyze.
     for (Module& mod : modules)
     {
         /// Function
@@ -192,6 +193,7 @@ void LLVMModuleSet::createSVFDataStructure()
     {
         createSVFFunction(func);
     }
+
     for (const Function* func: candidateDecls)
     {
         createSVFFunction(func);
@@ -229,6 +231,7 @@ void LLVMModuleSet::createSVFDataStructure()
     }
 }
 
+// Function from the module to analyze, other than ext module.
 void LLVMModuleSet::createSVFFunction(const Function* func)
 {
     SVFFunction* svfFunc = new SVFFunction(
@@ -239,8 +242,22 @@ void LLVMModuleSet::createSVFFunction(const Function* func)
         func->hasAddressTaken(), func->isVarArg(), new SVFLoopAndDomInfo);
     svfFunc->setName(func->getName().str());
     svfModule->addFunctionSet(svfFunc);
-    if (ExtFun2Annotations.find(func) != ExtFun2Annotations.end())
+
+    // TODO: Why the functions from 2 modules are the same?
+    if (ExtFun2Annotations.find(func) != ExtFun2Annotations.end()) {
+        std::vector<std::string>& vec = ExtFun2Annotations[func];
+
+        // Need to trim the last '\0' for annotations.
+        for (std::string& anno: vec) {
+            size_t offset = anno.find('\0');
+
+            if (offset != std::string::npos) {
+                anno.erase(offset, offset + 1);
+            }
+        }
+
         svfFunc->setAnnotations(ExtFun2Annotations[func]);
+    }
     addFunctionMap(func, svfFunc);
 
     for (const Argument& arg : func->args())
@@ -971,12 +988,13 @@ void LLVMModuleSet::buildFunToFunMap()
             }
         }
     }
+
     // Find the intersectNames
     std::set_intersection(
         declNames.begin(), declNames.end(), defNames.begin(), defNames.end(),
         std::inserter(intersectNames, intersectNames.end()));
 
-    ///// name to def map
+    ///// name to def map, for functions in app module.
     NameToFunDefMapTy nameToFunDefMap;
     for (const Function* fdef : funDefs)
     {
@@ -1050,8 +1068,57 @@ void LLVMModuleSet::buildFunToFunMap()
                 decls.push_back(fdecl);
                 // Keep all called functions in extfun
                 // ExtDecl -> ExtDecl in Table 1
-                std::vector<const Function*> calledFunctions = LLVMUtil::getCalledFunctions(extfun);
-                ExtFuncsVec.insert(ExtFuncsVec.end(), calledFunctions.begin(), calledFunctions.end());
+                std::vector<const Function*> calledFunctions =
+                    LLVMUtil::getCalledFunctions(extfun);
+                ExtFuncsVec.insert(ExtFuncsVec.end(), calledFunctions.begin(),
+                                   calledFunctions.end());
+                break;
+            }
+        }
+    }
+
+    /// handle cases that function names not matched accurately (name mangling)
+    // Functions in the original program with only declaration.
+    for (const Function* fdecl: funDecls) {
+        bool fdeclNameMatchedFlag = false;
+
+        // The function has been associated with a function definition.
+        if (FunDeclToDefMap.find(fdecl) != FunDeclToDefMap.end()) {
+            continue;
+        }
+
+        auto declName = fdecl->getName().str();
+
+        for (auto& supportedName: LLVMModuleSet::supportedAPIs) {
+
+            // TODO: Tofix.
+            if (declName.find(supportedName) == std::string::npos) {
+                continue;
+            }
+
+            for (auto extFunc: extFuncs) {
+                if (extFunc->getName().str() == supportedName) {
+
+                    // AppDecl -> ExtDef in Table 1
+                    FunDeclToDefMap[fdecl] = extFunc;
+
+                    // ExtDef -> AppDecl in Table 1
+                    auto& decls = FunDefToDeclsMap[extFunc];
+                    decls.emplace_back(fdecl);
+
+                    // Keep all called functions in extfun
+                    // ExtDecl -> ExtDecl in Table 1
+                    std::vector<const Function*> calledFunctions =
+                        LLVMUtil::getCalledFunctions(extFunc);
+                    ExtFuncsVec.insert(ExtFuncsVec.end(), calledFunctions.begin(),
+                                       calledFunctions.end());
+
+                    fdeclNameMatchedFlag = true;
+                    break;
+                }
+            }
+
+            if (fdeclNameMatchedFlag) {
                 break;
             }
         }
@@ -1124,6 +1191,10 @@ void LLVMModuleSet::buildFunToFunMap()
         }
     }
 }
+
+std::vector<std::string> LLVMModuleSet::supportedAPIs = {"openat", "fopen", "open", "fread", "pread", "read", "creat", "lseek",
+                                                    "fseek", "fwrite", "pwrite", "fclose", "write", "close", "ftell",
+                                                    "malloc", "memcpy"};  // getline? readdir? mkdir?
 
 void LLVMModuleSet::buildGlobalDefToRepMap()
 {

@@ -10,19 +10,13 @@
 
         ALLOC_RET,    // returns a ptr to a newly allocated object
         ALLOC_ARGi    // stores a pointer to an allocated object in *argi
-        REALLOC_RET,  
+        REALLOC_RET,
         MEMSET,       // memcpy() operations
         MEMCPY,       // memset() operations
         OVERWRITE,    // svf function overwrite app function
 */
 __attribute__((annotate("ALLOC_RET"), annotate("AllocSize:Arg0")))
 void *malloc(unsigned long size)
-{
-    return NULL;
-}
-
-__attribute__((annotate("ALLOC_RET"), annotate("AllocSize:UNKNOWN")))
-void *fopen(const char *voidname, const char *mode)
 {
     return NULL;
 }
@@ -1010,7 +1004,7 @@ char* ctime_r(const char *timer, char *buf)
 
 int readdir_r(void *__restrict__dir, void *__restrict__entry, void **__restrict__result)
 {
-    __restrict__entry = *__restrict__result;   
+    __restrict__entry = *__restrict__result;
     return 0;
 }
 
@@ -1245,3 +1239,93 @@ const char *zError(int a)
 {
     return STATIC_OBJECT;
 }
+
+
+// POSIX FS and Network APIs.
+
+__attribute__((annotate("FS")))
+int open(const char *path, int oflag, ...)
+{
+    return 0;
+}
+
+__attribute__((annotate("FS")))
+int openat(int fd, const char *path, int oflag, ...)
+{
+    return 0;
+}
+
+__attribute__((annotate("FS")))
+struct FILE *fopen(const char *restrict pathname, const char *restrict mode)
+{
+    return NULL;
+}
+
+__attribute__((annotate("FS")))
+int read(int fildes, void *buf, int nbyte)
+{
+    return 0;
+}
+
+__attribute__((annotate("FS")))
+int pread(int fildes, void *buf, int nbyte, int offset)
+{
+    return 0;
+}
+
+__attribute__((annotate("FS")))
+int fread(void *restrict buf, int size, int nitems, struct FILE *restrict stream)
+{
+    return 0;
+}
+
+__attribute__((annotate("FS")))
+int write(int fildes, const void *buf, int nbyte)
+{
+    return 0;
+}
+
+/// Here for the situation nbyte > buf size, we can say this can lead to an undefined behaviour, in normal programs no one should do it and we only handle normal programs.
+__attribute__((annotate("FS")))
+int pwrite(int fildes, const void *buf, int nbyte, int offset)
+{
+    return 0;
+}
+
+__attribute__((annotate("FS")))
+int fwrite(const void *buf, int size, int nitems, struct FILE *stream)
+{
+    return 0;
+}
+
+__attribute__((annotate("FS")))
+int close(int fildes)
+{
+    return 0;
+}
+
+__attribute__((annotate("FS")))
+int fclose(struct FILE *stream)
+{
+    return 0;
+}
+
+__attribute__((annotate("FS")))
+int lseek(int fildes, int offset, int whence)
+{
+    return 0;
+}
+
+__attribute__((annotate("FS")))
+int fseek(struct FILE *stream, long offset, int whence)
+{
+    return 0;
+}
+
+__attribute__((annotate("FS")))
+int ftell(struct FILE *stream)
+{
+    return 0;
+}
+
+// ferror()
