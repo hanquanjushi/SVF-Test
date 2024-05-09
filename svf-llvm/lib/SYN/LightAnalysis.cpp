@@ -11,7 +11,29 @@ LightAnalysis::LightAnalysis(const std::string& _srcPath)
     srcPath = _srcPath;
 }
 
+Modification::Modification(const std::string& srcpath)
+{
+    for (const auto& entry : fs::recursive_directory_iterator(srcpath))
+    {
+        if (entry.is_regular_file())
+        {
+            auto path = entry.path();
+            if (path.extension() == ".c" || path.extension() == ".h")
+            {
+                // 为每个.c和.h文件创建ReadWriteContext对象
+                ReadWriteContext context;
+                // 假设ReadWriteContext有一个接受文件路径的构造函数
+                context.srcFilePath = path.string();
+
+                // 将文件路径与ReadWriteContext对象存储到map中
+                fileContextMap[path.string()] = context;
+            }
+        }
+    }
+}
+
 LightAnalysis::~LightAnalysis() {}
+Modification::~Modification(){};
 
 void LightAnalysis::runOnSrc()
 {
@@ -640,7 +662,7 @@ void Modification::addNewCodeSnippet(std::string sourcepath,
                                      const SVFValue* endInst, std::string str)
 {
 
-    auto lightAnalysis = new LightAnalysis(sourcepath);
+    // auto lightAnalysis = new LightAnalysis(sourcepath);
     std::string location = startInst->getSourceLoc();
     if (location == "")
     {
@@ -649,25 +671,9 @@ void Modification::addNewCodeSnippet(std::string sourcepath,
     std::string::size_type pos = location.find("\"ln\":");
     unsigned int num =
         std::stoi(location.substr(pos + 5, location.find(",") - pos - 5));
-    SVFVar* conditionVar = const_cast<SVFVar*>(branch->getCondition());
-    std::string conditionstring = conditionVar->getValue()->toString();
-    std::size_t icmpPos = conditionstring.find("icmp");
-    if (icmpPos != std::string::npos)
-    {
-        std::size_t spacePos = conditionstring.find(" ", icmpPos);
-        std::size_t nextSpacePos = conditionstring.find(" ", spacePos + 1);
-        std::string operation =
-            conditionstring.substr(spacePos + 1, nextSpacePos - spacePos - 1);
-        std::vector<std::string> parameters = {};
-        pos = conditionstring.find("\"fl\": \"");
-        if (pos == std::string::npos)
-        {
-            return;
-        }
-        std::string srcpath = conditionstring.substr(
-            pos + 7, conditionstring.find("\" }") - pos - 7);
-        std ::cout << srcpath << std::endl;
-        lightAnalysis->findNodeOnTree(num, branch_order, operation, parameters,
-                                      srcpath);
-    }
+    std::cout << num << std::endl;
+}
+void Modification::setHoleFilling(int holeNumber, std::string varName)
+{
+    std::cout << holeNumber << std::endl;
 }
