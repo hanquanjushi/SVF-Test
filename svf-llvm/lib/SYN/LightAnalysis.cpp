@@ -711,6 +711,10 @@ enum CXChildVisitResult LightAnalysis::countChildren(CXCursor cursor,
                                                      CXCursor parent,
                                                      CXClientData clientData)
 {
+    if (clang_getCursorKind(cursor) == CXCursor_TypeRef)
+    {
+        return CXChildVisit_Continue;
+    }
     unsigned int* count = (unsigned int*)clientData;
     (*count)++;
     return CXChildVisit_Continue;
@@ -775,21 +779,7 @@ bool Modification::queryIfFirstDefinition(const SVFValue* defInst)
 void Modification::addNewCodeSnippet(const SVFValue* startInst,
                                      const SVFValue* endInst, std::string str)
 {
-    // auto lightAnalysis = new LightAnalysis(sourcepath);
-    std::string location = startInst->getSourceLoc();
-    if (location == "")
-    {
-        return;
-    }
-    std::string::size_type pos = location.find("\"ln\":");
-    unsigned int num =
-        std::stoi(location.substr(pos + 5, location.find(",") - pos - 5));
-    std::cout << num << std::endl;
-}
-
-void Modification::setHoleFilling(int holeNumber, std::string varName)
-{
-    std::cout << holeNumber << std::endl;
+    addNewCodeSnippetAfter(startInst, str);
 }
 
 void Modification::addNewCodeSnippetAfter(const SVFValue* startInst,
@@ -888,7 +878,7 @@ void Modification::addNewCodeSnippetAfter(const SVFValue* startInst,
     // Replace the old map with the new map
     context.lineOffsetMap = std::move(newOffsetMap);
     // Add a new offset for the inserted line
-    context.lineOffsetMap[adjusted_target_line] = 1;
+    context.lineOffsetMap[adjusted_target_line] += 1;
 
     // Store the updated context back in the fileContextMap
     fileContextMap[srcFilePath + srcpathstring] = context;
@@ -990,8 +980,94 @@ void Modification::addNewCodeSnippetBefore(const SVFValue* startInst,
     // Replace the old map with the new map
     context.lineOffsetMap = std::move(newOffsetMap);
     // Add a new offset for the inserted line
-    context.lineOffsetMap[adjusted_target_line - 1] = 1;
+    context.lineOffsetMap[adjusted_target_line - 1] += 1;
 
     // Store the updated context back in the fileContextMap
     fileContextMap[srcFilePath + srcpathstring] = context;
+}
+
+void Modification::replace(const SVFValue* inst, std::string str)
+{
+    std::string location = inst->getSourceLoc();
+    if (location == "")
+    {
+        return;
+    }
+    std::string::size_type pos = location.find("\"ln\":");
+    if (pos == std::string::npos)
+    {
+        return;
+    }
+    int target_line =
+        std::stoi(location.substr(pos + 5, location.find(",") - pos - 5));
+
+    int flag = 0;
+    pos = location.find("\"file\": \"");
+    if (pos == std::string::npos)
+    {
+        flag = 1;
+        pos = location.find("\"fl\": \"");
+        if (pos == std::string::npos)
+        {
+            return;
+        }
+    }
+    std::string srcpathstring;
+    if (flag == 0)
+    {
+        srcpathstring =
+            location.substr(pos + 9, location.find("\" }") - pos - 9);
+    }
+    else
+    {
+        srcpathstring =
+            location.substr(pos + 7, location.find("\" }") - pos - 7);
+    }
+
+    ReadWriteContext& context = fileContextMap[srcFilePath + srcpathstring];
+
+    // Adjust the target line number based on lineOffsetMap
+    int adjusted_target_line = target_line;
+    for (const auto& offset_pair : context.lineOffsetMap)
+    {
+        if (offset_pair.first <= target_line)
+        {
+            adjusted_target_line += offset_pair.second;
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    std::stringstream ss(context.workText);
+    std::string line;
+    std::vector<std::string> lines;
+    while (std::getline(ss, line))
+    {
+        lines.push_back(line);
+    }
+    // Replace the content of the specified line with the new code snippet
+    if (adjusted_target_line <= (int)(lines.size()))
+    {
+        lines[adjusted_target_line - 1] =
+            str; // 注意这里的索引是从0开始的，所以需要减1
+    }
+    // 重新整合workText
+    std::ostringstream os;
+    for (const auto& line : lines)
+    {
+        os << line << "\n";
+    }
+    context.workText = os.str();
+
+    // 注意：在替换操作中，我们不需要修改lineOffsetMap，因为行数没有变化
+
+    // Store the updated context back in the fileContextMap
+    fileContextMap[srcFilePath + srcpathstring] = context;
+}
+
+void Modification::setHoleFilling(int holeNumber, std::string varName)
+{
+    std::cout << holeNumber << std::endl;
 }

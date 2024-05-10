@@ -5,9 +5,7 @@
 int main(int argc, char* argv[]){
 	char* fileData;
 	ULLONG fileSize;
-int m = 1;
     PNODE cur;
-int m = 1;
     char* temp;
     
 	if (argc < 2) {
@@ -17,19 +15,19 @@ int m = 1;
 
 	fileData = loadFileToRAM(argv[1], &fileSize);
 	PLINKEDLIST list = tagparse(fileData);
-int m = 1;
-int m = 1;
-int m = 1;
-int m = 1;
-int m = 1;
-int m = 1;
+int n = 2;
 int m = 1;
 int m = 1;
 int m = 1;
 int m = 1;
 	//printList(list);
 	//printf("%s\n", getAttribute(list->first->next->tag, "id"));
-    PLINKEDLIST all_a = findAll(list, "a");
+int n = 2;
+int m = 1;
+int m = 1;
+int m = 1;
+int m = 1;
+int m = 1;
 int m = 1;
     printList(all_a);
     removeList(all_a);

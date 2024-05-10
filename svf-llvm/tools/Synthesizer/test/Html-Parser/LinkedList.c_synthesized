@@ -2,7 +2,7 @@
 
 PNODE newNode(bool isStartTag, char* startTag, char* endTag){
     PNODE node = (PNODE) malloc(sizeof(NODE));
-int m = 1;
+int n = 2;
 int m = 1;
 int m = 1;
 int m = 1;
@@ -14,15 +14,14 @@ int m = 1;
     return node;
 }
 
-int m = 1;
-int m = 1;
-int m = 1;
-int m = 1;
 PLINKEDLIST newList(){
-    PLINKEDLIST list = (PLINKEDLIST) malloc(sizeof(LINKEDLIST));
+int n = 2;
+int m = 1;
+int m = 1;
+int m = 1;
+int m = 1;
     list->first = NULL;
     list->last = NULL;
-int m = 1;
     return list;
 }
 
@@ -44,17 +43,17 @@ void appendList(PLINKEDLIST list, PNODE node){
         list->last->next = node;
         node->prev = list->last;
         list->last = list->last->next;
-int m = 1;
-int m = 1;
-int m = 1;
-int m = 1;
-int m = 1;
-int m = 1;
     }
 }
 
 void removeList(PLINKEDLIST list){
-    PNODE cur = list->first, toDelete;
+int n = 2;
+int m = 1;
+int m = 1;
+int m = 1;
+int m = 1;
+int m = 1;
+int m = 1;
     while(cur != NULL){
         toDelete = cur;
         cur = cur->next;

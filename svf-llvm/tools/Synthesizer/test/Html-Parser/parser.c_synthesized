@@ -2,12 +2,7 @@
 
 void printTag(TAG tag){
 	int size = (tag.endTag - tag.startTag);
-int m = 1;
-int m = 1;
-int m = 1;
-int m = 1;
-int m = 1;
-int m = 1;
+int n = 2;
 int m = 1;
 int m = 1;
 int m = 1;
@@ -18,15 +13,19 @@ int m = 1;
 int m = 1;
 int m = 1;
 	int i;
-int m = 1;
 	for (i = 0; i < size+1; i++) {
 		printf("%c", tag.startTag[i]);
 	}
 }
 
 PLINKEDLIST tagparse(char* html){
-    PLINKEDLIST list = newList();
-	PNODE node;
+int n = 2;
+int m = 1;
+int n = 2;
+int m = 1;
+int m = 1;
+int n = 2;
+int m = 1;
 	int i = 0;
 
 	//TAG temps
@@ -46,37 +45,35 @@ PLINKEDLIST tagparse(char* html){
 				}
 				endTag = &html[i];
 				break;
-int m = 1;
-int m = 1;
-int m = 1;
-int m = 1;
-int m = 1;
-int m = 1;
 			}
 			node = newNode(isStartTag, startTag, endTag);
 			appendList(list, node);
 		}
-int m = 1;
-int m = 1;
-int m = 1;
-int m = 1;
-int m = 1;
-int m = 1;
-int m = 1;
 	}
     
     return list;
 }
 
 int hasAttributes(TAG tag) {
-	char beforeClose = *(tag.endTag - 1);
+int n = 2;
+int m = 1;
+int m = 1;
+int m = 1;
+int m = 1;
+int m = 1;
+int m = 1;
 	if (beforeClose == '"' || beforeClose == ' ' || *(tag.startTag+1) == '/') {
 		return 1;
-	}
+int n = 2;
+int n = 2;
+int m = 1;
+int m = 1;
+int m = 1;
+int m = 1;
+int n = 2;
+int m = 1;
 	return 0;
 }
-int m = 1;
-int m = 1;
 
 char* getName(TAG tag) {
 	char* name;
@@ -87,8 +84,6 @@ char* getName(TAG tag) {
     }
 	int size;
 
-int m = 1;
-int m = 1;
 	while ((start[i] >= 'a' && start[i] <= 'z') || (start[i] >= 'A' && start[i] <= 'Z')) { i++; }
 	size = (int)(&start[i] - start);
 	return makeStrFrom(start, size);
@@ -97,7 +92,9 @@ int m = 1;
 char* getAttribute(TAG tag, char* attribute) {
 	char* attributePtr;
 	attributePtr = strstr(tag.startTag, attribute);
-	int size;
+int n = 2;
+int m = 1;
+int m = 1;
 	int i = 0;
     if (attributePtr == NULL || !hasAttributes(tag)) {
 		return NULL;
