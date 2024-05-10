@@ -16,7 +16,7 @@ namespace fs = std::filesystem;
 
 namespace SVF
 {
-    
+
 class ReadWriteContext
 {
 
@@ -53,6 +53,7 @@ private:
     int _mType;
     std::string concreteReplacementStmt;
     std::map<std::string, ReadWriteContext> fileContextMap;
+    std::string srcFilePath;
 
 public:
     // TODO: Need some specific handling strategies for different types?
@@ -103,6 +104,9 @@ public:
     // 可以理解为 hole 就是 "$"" + "holeNumber"，比如 $1, $2, $3,
     // ...，直接字符串精准匹配，换成 varName。
     void setHoleFilling(int holeNumber, std::string varName);
+
+    // 判断这个赋值语句前面有没有类型定义
+    bool queryIfFirstDefinition(const SVFValue* defInst);
 
     // 通过 inst 去找 ast 上这句话定义的那个变量名，然后精准替换。
     void setHoleFilling(int holeNumber, const SVFValue* varDefInst);
@@ -171,6 +175,10 @@ public:
     static enum CXChildVisitResult findIfElseScope(CXCursor cursor,
                                                    CXCursor parent,
                                                    CXClientData clientData);
+    
+    static enum CXChildVisitResult defineVisitor(CXCursor cursor,
+                                                 CXCursor parent,
+                                                 CXClientData clientData);
 
     static enum CXChildVisitResult callVisitor(CXCursor cursor, CXCursor parent,
                                                CXClientData clientData);
