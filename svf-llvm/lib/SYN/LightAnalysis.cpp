@@ -25,7 +25,12 @@ Modification::Modification(const std::string& srcpath)
                 ReadWriteContext context;
                 // 假设ReadWriteContext有一个接受文件路径的构造函数
                 context.srcFilePath = path.string();
-
+                // 给context.oracleText赋值
+                std::ifstream file(context.srcFilePath);
+                std::ostringstream ss;
+                ss << file.rdbuf();
+                context.oracleText = ss.str();
+                context.workText = context.oracleText;
                 // 将文件路径与ReadWriteContext对象存储到map中
                 fileContextMap[path.string()] = context;
             }
@@ -34,7 +39,31 @@ Modification::Modification(const std::string& srcpath)
 }
 
 LightAnalysis::~LightAnalysis() {}
-Modification::~Modification(){};
+Modification::~Modification()
+{
+    // 遍历 fileContextMap
+    for (auto& pair : fileContextMap)
+    {
+        // 获取文件上下文和文件路径
+        ReadWriteContext& context = pair.second;
+
+        const std::string& filePath = pair.first;
+        // 打开文件进行写入
+        context.outFp = fopen((filePath + "_synthesized").c_str(), "w");
+        if (context.outFp == nullptr)
+        {
+            // 打开文件失败，可能需要处理错误
+            continue;
+        }
+
+        // 写入修改后的文本
+        fwrite(context.workText.c_str(), sizeof(char), context.workText.size(),
+               context.outFp);
+
+        // 关闭文件
+        fclose(context.outFp);
+    }
+}
 
 void LightAnalysis::runOnSrc()
 {
@@ -677,6 +706,7 @@ enum CXChildVisitResult LightAnalysis::cursorVisitor(CXCursor curCursor,
     // freed. This applies to all functions returning a CXString
     return CXChildVisit_Recurse;
 }
+
 enum CXChildVisitResult LightAnalysis::countChildren(CXCursor cursor,
                                                      CXCursor parent,
                                                      CXClientData clientData)
@@ -686,54 +716,18 @@ enum CXChildVisitResult LightAnalysis::countChildren(CXCursor cursor,
     return CXChildVisit_Continue;
 }
 
-void Modification::addNewCodeSnippet(std::string sourcepath,
-                                     const SVFValue* startInst,
-                                     const SVFValue* endInst, std::string str)
-{
-    // auto lightAnalysis = new LightAnalysis(sourcepath);
-    std::string location = startInst->getSourceLoc();
-    if (location == "")
-    {
-        return;
-    }
-    std::string::size_type pos = location.find("\"ln\":");
-    unsigned int num =
-        std::stoi(location.substr(pos + 5, location.find(",") - pos - 5));
-    std::cout << num << std::endl;
-}
-
-void Modification::setHoleFilling(int holeNumber, std::string varName)
-{
-    std::cout << holeNumber << std::endl;
-}
-
-void Modification::addNewCodeSnippetAfter(std::string sourcepath,
-                                          const SVFValue* startInst,
-                                          std::string str)
-{
-    std::string location = startInst->getSourceLoc();
-    if (location == "")
-    {
-        return;
-    }
-    std::string::size_type pos = location.find("\"ln\":");
-    unsigned int num =
-        std::stoi(location.substr(pos + 5, location.find(",") - pos - 5));
-    std::cout << num << std::endl;
-}
-
 bool Modification::queryIfFirstDefinition(const SVFValue* defInst)
 {
     std::string location = defInst->getSourceLoc();
     if (location == "")
     {
-        //printf("location is empty\n");
+        // printf("location is empty\n");
         return false;
     }
     std::string::size_type pos = location.find("\"ln\":");
     if (pos == std::string::npos)
     {
-        //printf("location is empty\n");
+        // printf("location is empty\n");
         return false;
     }
     unsigned int target_line =
@@ -776,4 +770,228 @@ bool Modification::queryIfFirstDefinition(const SVFValue* defInst)
         return true;
     }
     return false;
+}
+
+void Modification::addNewCodeSnippet(const SVFValue* startInst,
+                                     const SVFValue* endInst, std::string str)
+{
+    // auto lightAnalysis = new LightAnalysis(sourcepath);
+    std::string location = startInst->getSourceLoc();
+    if (location == "")
+    {
+        return;
+    }
+    std::string::size_type pos = location.find("\"ln\":");
+    unsigned int num =
+        std::stoi(location.substr(pos + 5, location.find(",") - pos - 5));
+    std::cout << num << std::endl;
+}
+
+void Modification::setHoleFilling(int holeNumber, std::string varName)
+{
+    std::cout << holeNumber << std::endl;
+}
+
+void Modification::addNewCodeSnippetAfter(const SVFValue* startInst,
+                                          std::string str)
+{
+    std::string location = startInst->getSourceLoc();
+    if (location == "")
+    {
+        return;
+    }
+    std::string::size_type pos = location.find("\"ln\":");
+    if (pos == std::string::npos)
+    {
+        return;
+    }
+    int target_line =
+        std::stoi(location.substr(pos + 5, location.find(",") - pos - 5));
+
+    int flag = 0;
+    pos = location.find("\"file\": \"");
+    if (pos == std::string::npos)
+    {
+        flag = 1;
+        pos = location.find("\"fl\": \"");
+        if (pos == std::string::npos)
+        {
+            return;
+        }
+    }
+    std::string srcpathstring;
+    if (flag == 0)
+    {
+        srcpathstring =
+            location.substr(pos + 9, location.find("\" }") - pos - 9);
+    }
+    else
+    {
+        srcpathstring =
+            location.substr(pos + 7, location.find("\" }") - pos - 7);
+    }
+
+    ReadWriteContext& context = fileContextMap[srcFilePath + srcpathstring];
+
+    // Adjust the target line number based on lineOffsetMap
+    int adjusted_target_line = target_line;
+    for (const auto& offset_pair : context.lineOffsetMap)
+    {
+        if (offset_pair.first <= target_line)
+        {
+            adjusted_target_line += offset_pair.second;
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    std::stringstream ss(context.workText);
+    std::string line;
+    std::vector<std::string> lines;
+    while (std::getline(ss, line))
+    {
+        lines.push_back(line);
+    }
+    // Insert the new code snippet after the adjusted target line
+    if (adjusted_target_line < (int)(lines.size()))
+    {
+        lines.insert(lines.begin() + adjusted_target_line, str);
+    }
+    // 重新整合workText
+    std::ostringstream os;
+    for (const auto& line : lines)
+    {
+        os << line << "\n";
+    }
+    context.workText = os.str();
+
+    // Create a new map to store the updated pairs
+    std::map<int, int> newOffsetMap;
+
+    // Update the lineOffsetMap for all lines after the adjusted target line
+    for (const auto& offset_pair : context.lineOffsetMap)
+    {
+        if (offset_pair.first > adjusted_target_line)
+        {
+            // Insert a new pair with the modified key and the same value
+            newOffsetMap[offset_pair.first + 1] = offset_pair.second;
+        }
+        else
+        {
+            // Keep the same pair if it is not after the adjusted target line
+            newOffsetMap[offset_pair.first] = offset_pair.second;
+        }
+    }
+
+    // Replace the old map with the new map
+    context.lineOffsetMap = std::move(newOffsetMap);
+    // Add a new offset for the inserted line
+    context.lineOffsetMap[adjusted_target_line] = 1;
+
+    // Store the updated context back in the fileContextMap
+    fileContextMap[srcFilePath + srcpathstring] = context;
+}
+
+void Modification::addNewCodeSnippetBefore(const SVFValue* startInst,
+                                           std::string str)
+{
+    std::string location = startInst->getSourceLoc();
+    if (location == "")
+    {
+        return;
+    }
+    std::string::size_type pos = location.find("\"ln\":");
+    if (pos == std::string::npos)
+    {
+        return;
+    }
+    int target_line =
+        std::stoi(location.substr(pos + 5, location.find(",") - pos - 5));
+
+    int flag = 0;
+    pos = location.find("\"file\": \"");
+    if (pos == std::string::npos)
+    {
+        flag = 1;
+        pos = location.find("\"fl\": \"");
+        if (pos == std::string::npos)
+        {
+            return;
+        }
+    }
+    std::string srcpathstring;
+    if (flag == 0)
+    {
+        srcpathstring =
+            location.substr(pos + 9, location.find("\" }") - pos - 9);
+    }
+    else
+    {
+        srcpathstring =
+            location.substr(pos + 7, location.find("\" }") - pos - 7);
+    }
+
+    ReadWriteContext& context = fileContextMap[srcFilePath + srcpathstring];
+
+    // Adjust the target line number based on lineOffsetMap
+    int adjusted_target_line = target_line;
+    for (const auto& offset_pair : context.lineOffsetMap)
+    {
+        if (offset_pair.first < target_line)
+        {
+            adjusted_target_line += offset_pair.second;
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    std::stringstream ss(context.workText);
+    std::string line;
+    std::vector<std::string> lines;
+    while (std::getline(ss, line))
+    {
+        lines.push_back(line);
+    }
+    // Insert the new code snippet before the adjusted target line
+    if (adjusted_target_line > 0)
+    {
+        lines.insert(lines.begin() + adjusted_target_line - 1, str);
+    }
+    // 重新整合workText
+    std::ostringstream os;
+    for (const auto& line : lines)
+    {
+        os << line << "\n";
+    }
+    context.workText = os.str();
+
+    // Create a new map to store the updated pairs
+    std::map<int, int> newOffsetMap;
+
+    // Update the lineOffsetMap for all lines after the adjusted target line
+    for (const auto& offset_pair : context.lineOffsetMap)
+    {
+        if (offset_pair.first >= adjusted_target_line)
+        {
+            // Insert a new pair with the modified key and the same value
+            newOffsetMap[offset_pair.first + 1] = offset_pair.second;
+        }
+        else
+        {
+            // Keep the same pair if it is not after the adjusted target line
+            newOffsetMap[offset_pair.first] = offset_pair.second;
+        }
+    }
+
+    // Replace the old map with the new map
+    context.lineOffsetMap = std::move(newOffsetMap);
+    // Add a new offset for the inserted line
+    context.lineOffsetMap[adjusted_target_line - 1] = 1;
+
+    // Store the updated context back in the fileContextMap
+    fileContextMap[srcFilePath + srcpathstring] = context;
 }

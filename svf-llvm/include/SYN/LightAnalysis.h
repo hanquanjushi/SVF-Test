@@ -91,14 +91,12 @@ public:
     /// New.
     // 从 startInst 到 endInst 直接选一行插入。
     // sourcepath是命令行传的.ll文件的路径
-    void addNewCodeSnippet(std::string sourcepath, const SVFValue* startInst,
-                           const SVFValue* endInst, std::string str);
+    void addNewCodeSnippet(const SVFValue* startInst, const SVFValue* endInst,
+                           std::string str);
 
-    void addNewCodeSnippetAfter(std::string sourcepath,
-                                const SVFValue* startInst, std::string str);
+    void addNewCodeSnippetAfter(const SVFValue* startInst, std::string str);
 
-    void addNewCodeSnippetBefore(std::string sourcepath,
-                                 const SVFValue* endInst, std::string str);
+    void addNewCodeSnippetBefore(const SVFValue* endInst, std::string str);
 
     /// HoleFilling.
     // 可以理解为 hole 就是 "$"" + "holeNumber"，比如 $1, $2, $3,
@@ -175,7 +173,7 @@ public:
     static enum CXChildVisitResult findIfElseScope(CXCursor cursor,
                                                    CXCursor parent,
                                                    CXClientData clientData);
-    
+
     static enum CXChildVisitResult defineVisitor(CXCursor cursor,
                                                  CXCursor parent,
                                                  CXClientData clientData);

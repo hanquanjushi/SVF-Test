@@ -34,10 +34,10 @@ static Option<std::string> SOURCEPATH("srcpath",
 static Option<std::string> NEWSPECPATH("newspec",
                                        "Path for new specification file", "");
 
-void traverseOnSVFStmt(const ICFGNode* node)
+void traverseOnSVFStmt(const ICFGNode* node,SVF::Modification *modification)
 {
     auto str = SOURCEPATH();
-    auto modification = new SVF::Modification(str);
+    //auto modification = new SVF::Modification(str);
     auto lightAnalysis = new LightAnalysis(str);
     // std::string stmtstring = node->toString();
     if (const CallICFGNode* callNode = SVFUtil::dyn_cast<CallICFGNode>(node))
@@ -90,6 +90,7 @@ void traverseOnSVFStmt(const ICFGNode* node)
         {
             std::string inststring = instruction->toString();
             std ::cout << inststring << std::endl;
+            modification->addNewCodeSnippetAfter(instruction, "int m = 1;");
         }
 
         //   std::string name = instruction->getName();
@@ -132,6 +133,8 @@ void traverseOnSVFStmt(const ICFGNode* node)
             }
         }
     }
+    // 调用Modification的析构函数
+    
 }
 
 int main(int argc, char** argv)
@@ -158,13 +161,16 @@ int main(int argc, char** argv)
     auto pag = builder.build();
     assert(pag && "pag cannot be nullptr!");
     ICFG* icfg = pag->getICFG();
+    auto str = SOURCEPATH();
+    auto modification = new SVF::Modification(str);
     for (const auto& it : *icfg)
     {
         const ICFGNode* node = it.second;
-        traverseOnSVFStmt(node);
+        traverseOnSVFStmt(node,modification);
     }
     // auto str = SOURCEPATH();
     // auto modification = new SVF::Modification(str);
     // modification->setHoleFilling(1, "a");
+    delete modification;
     return 0;
 }
