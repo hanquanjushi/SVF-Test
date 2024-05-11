@@ -98,6 +98,9 @@ public:
 
     void addNewCodeSnippetBefore(const SVFValue* endInst, std::string str);
 
+    void deleteCodeRange(int startLine, int startColumn, int endLine,
+                         int endColumn, std::string srcpathstring);
+
     /// HoleFilling.
     // 可以理解为 hole 就是 "$"" + "holeNumber"，比如 $1, $2, $3,
     // ...，直接字符串精准匹配，换成 varName。

@@ -51,7 +51,7 @@ void traverseOnSVFStmt(const ICFGNode* node, SVF::Modification* modification)
             return;
         }
         std::string::size_type pos = m.find("\"ln\":");
-        unsigned int num = std::stoi(m.substr(pos + 5, m.find(",") - pos - 5));
+        int num = std::stoi(m.substr(pos + 5, m.find(",") - pos - 5));
         std::regex re("@(\\w+)\\((.+)\\)");
         std::smatch match;
         std::string functionName;
@@ -108,7 +108,7 @@ void traverseOnSVFStmt(const ICFGNode* node, SVF::Modification* modification)
                 break;
             }
             std::string::size_type pos = location.find("\"ln\":");
-            unsigned int num = std::stoi(
+            int num = std::stoi(
                 location.substr(pos + 5, location.find(",") - pos - 5));
             SVFVar* conditionVar = const_cast<SVFVar*>(branch->getCondition());
             std::string conditionstring = conditionVar->getValue()->toString();
