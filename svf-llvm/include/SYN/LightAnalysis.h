@@ -184,6 +184,9 @@ public:
     static enum CXChildVisitResult astVisitor(CXCursor cursor, CXCursor parent,
                                               CXClientData client_data);
 
+    static enum CXChildVisitResult branchVisitor(CXCursor curCursor,
+                                                 CXCursor parent,
+                                                 CXClientData client_data);
     void runOnSrc();
 
     void findNodeOnTree(unsigned int target_line, int order_number,

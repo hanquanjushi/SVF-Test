@@ -627,17 +627,53 @@ enum CXChildVisitResult LightAnalysis::findIfElseScope(CXCursor cursor,
                                                        CXCursor parent,
                                                        CXClientData clientData)
 {
-    unsigned int* count = (unsigned int*)clientData;
-    (*count)++;
-    if (*count == 2)
+    //  unsigned int* count = (unsigned int*)clientData;
+    //  (*count)++;
+    VisitorData* data = static_cast<VisitorData*>(clientData);
+    data->order_number++;
+    int count = data->order_number;
+
+    if (count == 1)
+    {
+        CXSourceRange ifcondrange = clang_getCursorExtent(cursor);
+        CXSourceLocation startLoc = clang_getRangeStart(ifcondrange);
+        CXSourceLocation endLoc = clang_getRangeEnd(ifcondrange);
+        unsigned startLine, startColumn, endLine, endColumn;
+        clang_getSpellingLocation(startLoc, NULL, &startLine, &startColumn,
+                                  NULL);
+        clang_getSpellingLocation(endLoc, NULL, &endLine, &endColumn, NULL);
+        data->parameters.push_back(std::to_string(startLine));
+        data->parameters.push_back(std::to_string(startColumn));
+        data->parameters.push_back(std::to_string(endLine));
+        data->parameters.push_back(std::to_string(endColumn));
+    }
+    if (count == 2)
     {
         CXSourceRange ifrange = clang_getCursorExtent(cursor);
-        printSourceRange(ifrange, "if");
+        CXSourceLocation startLoc = clang_getRangeStart(ifrange);
+        CXSourceLocation endLoc = clang_getRangeEnd(ifrange);
+        unsigned startLine, startColumn, endLine, endColumn;
+        clang_getSpellingLocation(startLoc, NULL, &startLine, &startColumn,
+                                  NULL);
+        clang_getSpellingLocation(endLoc, NULL, &endLine, &endColumn, NULL);
+        data->parameters.push_back(std::to_string(startLine));
+        data->parameters.push_back(std::to_string(startColumn));
+        data->parameters.push_back(std::to_string(endLine));
+        data->parameters.push_back(std::to_string(endColumn));
     }
-    if (*count == 3)
+    if (count == 3)
     {
         CXSourceRange elseRange = clang_getCursorExtent(cursor);
-        printSourceRange(elseRange, "else");
+        CXSourceLocation startLoc = clang_getRangeStart(elseRange);
+        CXSourceLocation endLoc = clang_getRangeEnd(elseRange);
+        unsigned startLine, startColumn, endLine, endColumn;
+        clang_getSpellingLocation(startLoc, NULL, &startLine, &startColumn,
+                                  NULL);
+        clang_getSpellingLocation(endLoc, NULL, &endLine, &endColumn, NULL);
+        data->parameters.push_back(std::to_string(startLine));
+        data->parameters.push_back(std::to_string(startColumn));
+        data->parameters.push_back(std::to_string(endLine));
+        data->parameters.push_back(std::to_string(endColumn));
     }
     return CXChildVisit_Continue;
 }
@@ -1060,11 +1096,117 @@ void Modification::replace(const SVFValue* inst, std::string str)
         os << line << "\n";
     }
     context.workText = os.str();
-
     // 注意：在替换操作中，我们不需要修改lineOffsetMap，因为行数没有变化
-
     // Store the updated context back in the fileContextMap
     fileContextMap[srcFilePath + srcpathstring] = context;
+}
+
+enum CXChildVisitResult LightAnalysis::branchVisitor(CXCursor curCursor,
+                                                     CXCursor parent,
+                                                     CXClientData client_data)
+{
+    CXSourceLocation loc = clang_getCursorLocation(curCursor);
+    unsigned int line, column;
+    CXFile file;
+    clang_getSpellingLocation(loc, &file, &line, &column, nullptr);
+    VisitorData* data = static_cast<VisitorData*>(client_data);
+    int condValue = data->order_number;
+    unsigned int target_line = data->target_line;
+    if (line == target_line)
+    {
+        if (static_cast<CXCursorKind>(clang_getCursorKind(curCursor)) ==
+            CXCursor_IfStmt)
+        {
+            unsigned int childnum = 0;
+            // childnum是3说明有else
+            // 如果childnum是3，parent的location是整体范围，child1的location是if后面括号的范围，child2的location是if后面的{}的范围，child3的location是else后面的{}的范围
+            // 如果childnum是2，parent的location是整体范围，child1的location是if后面括号的范围，child2的location是if后面的{}的范围
+            std::vector<std::string> params;
+            VisitorData data{0, 0, 0, "", params};
+            clang_visitChildren(curCursor, &findIfElseScope, &childnum);
+            CXSourceRange wholeifrange = clang_getCursorExtent(curCursor);
+            CXSourceLocation startLoc = clang_getRangeStart(wholeifrange);
+            CXSourceLocation endLoc = clang_getRangeEnd(wholeifrange);
+            unsigned startLine, startColumn, endLine, endColumn;
+            clang_getSpellingLocation(startLoc, NULL, &startLine, &startColumn,
+                                      NULL);
+            clang_getSpellingLocation(endLoc, NULL, &endLine, &endColumn, NULL);
+               
+            int childnum = data.order_number;
+            std::vector<int> lines;
+            std::vector<int> columns;
+
+            if (childnum == 3)
+            {
+                for (int i = 0; i < 12; i++)
+                {
+                    lines.push_back(std::stoi(data.parameters[i]));
+                    columns.push_back(std::stoi(data.parameters[i + 1]));
+                }
+            }
+            else if (childnum == 2)
+            {
+                for (int i = 0; i < 8; i++)
+                {
+                    lines.push_back(std::stoi(data.parameters[i]));
+                    columns.push_back(std::stoi(data.parameters[i + 1]));
+                }
+            }
+            if (condValue)
+            {
+                // 先判断有没有 else，没有的话把包括 branch cond
+                // 在内的语句全删了 有else就把branch cond 加上!()，然后把
+                // if后面的{}和 else 这个词删了
+                if (childnum == 3)
+                {
+                }
+                else if (childnum == 2)
+                {
+                    // 没有else,删除全部
+                }
+            }
+            else
+            {
+                // 有else只删else，没else不用变
+                if (childnum == 3)
+                {
+                }
+                else if (childnum == 2)
+                {
+                }
+            }
+        }
+    }
+    return CXChildVisit_Recurse;
+}
+
+void Modification::deleteEitherBranch(const SVFValue* branchInst,
+                                      bool condValue)
+{
+    std::string location = branchInst->getSourceLoc();
+    if (location == "")
+    {
+        return;
+    }
+    std::string::size_type pos = location.find("\"ln\":");
+    unsigned int target_line =
+        std::stoi(location.substr(pos + 5, location.find(",") - pos - 5));
+    pos = location.find("\"fl\": \"");
+    if (pos == std::string::npos)
+    {
+        return;
+    }
+    std::string srcpathstring =
+        location.substr(pos + 7, location.find("\" }") - pos - 7);
+    std ::cout << srcpathstring << std::endl;
+    CXIndex index = clang_createIndex(0, 0);
+    CXTranslationUnit unit = clang_parseTranslationUnit(
+        index, (srcFilePath + srcpathstring).c_str(), nullptr, 0, nullptr, 0,
+        CXTranslationUnit_None);
+    assert(unit && "unit cannot be nullptr!");
+    CXCursor cursor = clang_getTranslationUnitCursor(unit);
+    VisitorData data{condValue, target_line, 0, "", {}};
+    clang_visitChildren(cursor, &LightAnalysis::branchVisitor, &data);
 }
 
 void Modification::setHoleFilling(int holeNumber, std::string varName)
