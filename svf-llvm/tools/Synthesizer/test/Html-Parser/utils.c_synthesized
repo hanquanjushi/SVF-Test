@@ -20,8 +20,8 @@ char* loadFileToRAM(char* filename, PULLONG size) {
 }
 
 char* makeStrFrom(char* src, int size) {
-	char* toRet = (char*) malloc(size + 1);
 int n = 2;
+int m = 1;
 int m = 1;
 int m = 1;
 int m = 1;

@@ -1,8 +1,8 @@
 #include "parser.h"
 
 void printTag(TAG tag){
-	int size = (tag.endTag - tag.startTag);
 int n = 2;
+int m = 1;
 int m = 1;
 int m = 1;
 int m = 1;
@@ -21,34 +21,34 @@ int m = 1;
 PLINKEDLIST tagparse(char* html){
 int n = 2;
 int m = 1;
+int m = 1;
+int m = 1;
+	PNODE node;
 int n = 2;
 int m = 1;
 int m = 1;
-int n = 2;
-int m = 1;
-	int i = 0;
 
 	//TAG temps
     int isStartTag;
     char *startTag, *endTag;
     
 	for (i = 0; i < strlen(html); i++) {
-		if (html[i] == '<') {
-			startTag = &html[i];
-			if (html[i + 1] == '/') {
-				isStartTag = 1;
-			}
-			while (1) {
-				if (html[i] != '>') {
-					i++;
-					continue;
-				}
-				endTag = &html[i];
-				break;
-			}
-			node = newNode(isStartTag, startTag, endTag);
-			appendList(list, node);
-		}
+		
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	}
     
     return list;
@@ -62,26 +62,26 @@ int m = 1;
 int m = 1;
 int m = 1;
 int m = 1;
-	if (beforeClose == '"' || beforeClose == ' ' || *(tag.startTag+1) == '/') {
-		return 1;
-int n = 2;
-int n = 2;
-int m = 1;
-int m = 1;
-int m = 1;
-int m = 1;
-int n = 2;
-int m = 1;
+	
+
+
 	return 0;
 }
 
 char* getName(TAG tag) {
 	char* name;
-	int i = 0;
-	char* start = tag.startTag+1;
-    if(*start == '/'){
-        start++;
-    }
+int n = 2;
+int m = 1;
+int m = 1;
+int n = 2;
+int m = 1;
+int m = 1;
+int m = 1;
+int m = 1;
+int m = 1;
+    
+
+
 	int size;
 
 	while ((start[i] >= 'a' && start[i] <= 'z') || (start[i] >= 'A' && start[i] <= 'Z')) { i++; }
@@ -92,13 +92,13 @@ char* getName(TAG tag) {
 char* getAttribute(TAG tag, char* attribute) {
 	char* attributePtr;
 	attributePtr = strstr(tag.startTag, attribute);
+	int size;
 int n = 2;
 int m = 1;
 int m = 1;
-	int i = 0;
-    if (attributePtr == NULL || !hasAttributes(tag)) {
-		return NULL;
-	}
+    
+
+
 	attributePtr += strlen(attribute) + 2; // 2 -> ="
 	while (attributePtr[i] != '"') { i++; }
 	size = (int)(&attributePtr[i] - attributePtr);

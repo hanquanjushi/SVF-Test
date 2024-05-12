@@ -192,7 +192,7 @@ public:
                                                  CXClientData client_data);
     void runOnSrc();
 
-    void findNodeOnTree(unsigned int target_line, int order_number,
+    void findNodeOnTree(int target_line, int order_number,
                         const std::string& functionName,
                         const std::vector<std::string>& parameters,
                         std::string srcpathstring);

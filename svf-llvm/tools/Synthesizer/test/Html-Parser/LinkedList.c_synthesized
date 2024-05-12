@@ -1,8 +1,8 @@
 #include "LinkedList.h"
 
 PNODE newNode(bool isStartTag, char* startTag, char* endTag){
-    PNODE node = (PNODE) malloc(sizeof(NODE));
 int n = 2;
+int m = 1;
 int m = 1;
 int m = 1;
 int m = 1;
@@ -35,15 +35,15 @@ void printList(PLINKEDLIST list){
 }
 
 void appendList(PLINKEDLIST list, PNODE node){
-    if(list->first == NULL){
-        list->first = node;
-        list->last = node;
-    }
-    else{
-        list->last->next = node;
-        node->prev = list->last;
-        list->last = list->last->next;
-    }
+    
+
+
+
+
+
+
+
+
 }
 
 void removeList(PLINKEDLIST list){

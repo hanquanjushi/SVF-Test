@@ -103,6 +103,7 @@ void traverseOnSVFStmt(const ICFGNode* node, SVF::Modification* modification)
             SVFValue* branchValue =
                 const_cast<SVFValue*>(branchVar->getValue());
             std::string location = branchValue->getSourceLoc();
+            modification->deleteBranch(branchValue);
             if (location == "")
             {
                 break;
