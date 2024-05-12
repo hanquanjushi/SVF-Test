@@ -1222,8 +1222,6 @@ void Modification::deleteCodeRange(int startLine, int startColumn, int endLine,
                 lines[i - 1].clear();
             }
         }
-
-      
     }
 
     // 重新整合workText
@@ -1233,11 +1231,52 @@ void Modification::deleteCodeRange(int startLine, int startColumn, int endLine,
         os << line << "\n";
     }
     context.workText = os.str();
- 
+
     // Store the updated context back in the fileContextMap
     fileContextMap[srcFilePath + srcpathstring] = context;
 }
+void Modification::insertNegation(int ifLine, int ifColumn,
+                                  std::string srcpathstring)
+{
+    // Assuming we have access to fileContextMap and srcFilePath similar to the
+    // reference functions Assuming srcpathstring can be obtained in a similar
+    // manner as the reference functions
+    ReadWriteContext& context = fileContextMap[srcFilePath + srcpathstring];
 
+    // Adjust the start and end line numbers based on lineOffsetMap
+    int adjusted_start_line = ifLine;
+
+    for (const auto& offset_pair : context.lineOffsetMap)
+    {
+        if (offset_pair.first <= ifLine)
+        {
+            adjusted_start_line += offset_pair.second;
+        }
+    }
+    std::stringstream ss(context.workText);
+    std::string line;
+    std::vector<std::string> lines;
+    while (std::getline(ss, line))
+    {
+        lines.push_back(line);
+    }
+
+    // Check if the line is valid
+    if (adjusted_start_line <= (int)(lines.size()))
+    {
+        // Insert '!' before the condition
+        lines[adjusted_start_line - 1].insert(ifColumn, "!"); 
+    }
+
+    std::ostringstream os;
+    for (const auto& line : lines)
+    {
+        os << line << "\n";
+    }
+    context.workText = os.str();
+
+    fileContextMap[srcFilePath + srcpathstring] = context;
+}
 void Modification::deleteEitherBranch(const SVFValue* branchInst,
                                       bool condValue)
 {
@@ -1263,7 +1302,7 @@ void Modification::deleteEitherBranch(const SVFValue* branchInst,
         CXTranslationUnit_None);
     assert(unit && "unit cannot be nullptr!");
     CXCursor cursor = clang_getTranslationUnitCursor(unit);
-    VisitorData data{0, target_line, 0, "", {}};
+    VisitorData data{0, target_line, 0, "", {}, {}, {}};
     clang_visitChildren(cursor, &LightAnalysis::branchVisitor, &data);
     int childnum = data.order_number;
     std::vector<int> lines = data.lines;
@@ -1280,9 +1319,15 @@ void Modification::deleteEitherBranch(const SVFValue* branchInst,
             // 把branch cond 加上!()，然后把
             // if后面的{}和 else 这个词删了
             int ifStartLine = lines[4];
-            int ifStartColumn = columns[4];
+            int ifStartColumn = columns[4] + 1;
             int ifEndLine = lines[6];
             int ifEndColumn = columns[6];
+
+            int ifConditionStartLine = lines[2];
+            int ifConditionStartColumn = columns[2];
+
+            insertNegation(ifConditionStartLine, ifConditionStartColumn,
+                           srcpathstring);
             deleteCodeRange(ifStartLine, ifStartColumn, ifEndLine, ifEndColumn,
                             srcpathstring);
         }
@@ -1293,8 +1338,8 @@ void Modification::deleteEitherBranch(const SVFValue* branchInst,
             int elseStartColumn = columns[6];
             int endLine = lines[7];
             int endColumn = columns[7];
-            deleteCodeRange(elseStartLine, elseStartColumn, endLine, endColumn,
-                            srcpathstring);
+            deleteCodeRange(elseStartLine, elseStartColumn - 4, endLine,
+                            endColumn, srcpathstring);
         }
     }
     else if (childnum == 2)

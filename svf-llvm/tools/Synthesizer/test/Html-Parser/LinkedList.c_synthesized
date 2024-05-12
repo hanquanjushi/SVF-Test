@@ -27,7 +27,7 @@ int m = 1;
 
 void printList(PLINKEDLIST list){
     PNODE cur;
-    for (cur = list->first; cur != NULL; cur = cur->next) {
+    for !()(cur = list->first; cur != NULL; cur = cur->next) {
         printTag(cur->tag);
         printf(" -->\n");
     }
@@ -35,15 +35,15 @@ void printList(PLINKEDLIST list){
 }
 
 void appendList(PLINKEDLIST list, PNODE node){
-    
+    if(list->first == NULL){
 
 
 
 
-
-
-
-
+        list->last->next = node;
+        node->prev = list->last;
+        list->last = list->last->next;
+    }
 }
 
 void removeList(PLINKEDLIST list){
