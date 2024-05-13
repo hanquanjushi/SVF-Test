@@ -6,6 +6,43 @@
 
 using namespace SVF;
 
+std::pair<int, std::string> extractLineAndPath(const SVFValue* value)
+{
+    std::string location = value->getSourceLoc();
+    if (location.empty())
+    {
+        return {0, ""};
+    }
+    std::string::size_type pos = location.find("\"ln\":");
+    if (pos == std::string::npos)
+    {
+        return {0, ""};
+    }
+    int line =
+        std::stoi(location.substr(pos + 5, location.find(",") - pos - 5));
+    pos = location.find("\"fl\": \"");
+    if (pos == std::string::npos)
+    {
+        return {0, ""};
+    }
+    std::string path =
+        location.substr(pos + 7, location.find("\" }") - pos - 7);
+
+    return {line, path};
+}
+
+CXTranslationUnit createTranslationUnit(const std::string& srcPath)
+{
+    CXIndex index = clang_createIndex(0, 0);
+    CXTranslationUnit unit = clang_parseTranslationUnit(
+        index, srcPath.c_str(), nullptr, 0, nullptr, 0, CXTranslationUnit_None);
+    if (!unit)
+    {
+        clang_disposeIndex(index);
+    }
+    return unit;
+}
+
 LightAnalysis::LightAnalysis(const std::string& _srcPath)
 {
     srcPath = _srcPath;
@@ -79,7 +116,7 @@ void LightAnalysis::runOnSrc()
 struct VisitorData
 {
     int order_number;
-    int target_line;
+    int targetLine;
     int visit_time;
     std::string functionName;
     std::vector<std::string> parameters;
@@ -87,16 +124,16 @@ struct VisitorData
     std::vector<int> columns;
 };
 
-void LightAnalysis::findNodeOnTree(int target_line, int order_number,
+void LightAnalysis::findNodeOnTree(int targetLine, int order_number,
                                    const std::string& functionName,
                                    const std::vector<std::string>& parameters,
-                                   std::string srcpathstring)
+                                   std::string srcPathString)
 {
     CXIndex index = clang_createIndex(0, 0);
     CXTranslationUnit unit = clang_parseTranslationUnit(
-        index, (srcPath + srcpathstring).c_str(), nullptr, 0, nullptr, 0,
+        index, (srcPath + srcPathString).c_str(), nullptr, 0, nullptr, 0,
         CXTranslationUnit_None);
-    if (srcpathstring[0] == '/')
+    if (srcPathString[0] == '/')
     {
         return;
     }
@@ -104,18 +141,17 @@ void LightAnalysis::findNodeOnTree(int target_line, int order_number,
     CXCursor cursor = clang_getTranslationUnitCursor(unit);
     if (order_number == 0)
     {
-        VisitorData data{order_number, target_line, 0, functionName,
-                         parameters};
+        VisitorData data{order_number, targetLine, 0, functionName, parameters};
         clang_visitChildren(cursor, &astVisitor, &data);
     }
     else if (order_number == 1)
     {
-        VisitorData data{order_number, target_line, 0, functionName};
+        VisitorData data{order_number, targetLine, 0, functionName};
         clang_visitChildren(cursor, &astVisitor, &data);
     }
     else if (order_number == 2)
     {
-        VisitorData data{order_number, target_line, 0, functionName};
+        VisitorData data{order_number, targetLine, 0, functionName};
         clang_visitChildren(cursor, &astVisitor, &data);
     }
 }
@@ -129,8 +165,8 @@ enum CXChildVisitResult LightAnalysis::astVisitor(CXCursor curCursor,
     CXFile file;
     clang_getSpellingLocation(loc, &file, &line, &column, nullptr);
     VisitorData* data = static_cast<VisitorData*>(client_data);
-    unsigned target_line = data->target_line;
-    if (line == target_line)
+    unsigned targetLine = data->targetLine;
+    if (line == targetLine)
     {
 
         int order_number = data->order_number;
@@ -260,7 +296,7 @@ enum CXChildVisitResult LightAnalysis::forstmtVisitor(CXCursor cursor,
                                                       CXClientData clientData)
 {
     VisitorData* data = static_cast<VisitorData*>(clientData);
-    int childnum = data->target_line;
+    int childnum = data->targetLine;
     if (childnum == 4)
     {
         data->order_number = data->order_number + 1;
@@ -528,7 +564,7 @@ enum CXChildVisitResult LightAnalysis::callVisitor(CXCursor cursor,
 {
     VisitorData* data = static_cast<VisitorData*>(clientData);
     std::vector<std::string> params = data->parameters;
-    int total = (int)(data->target_line);
+    int total = (int)(data->targetLine);
     int m = static_cast<CXCursorKind>(clang_getCursorKind(cursor));
     //   printf("m = %d\n", m);
     int index = total - data->order_number;
@@ -701,8 +737,8 @@ enum CXChildVisitResult LightAnalysis::defineVisitor(CXCursor curCursor,
     CXFile file;
     clang_getSpellingLocation(loc, &file, &line, &column, nullptr);
     VisitorData* data = static_cast<VisitorData*>(client_data);
-    unsigned target_line = data->target_line;
-    if (line == target_line)
+    unsigned targetLine = data->targetLine;
+    if (line == targetLine)
     {
         if (clang_getCursorKind(curCursor) == CXCursor_VarDecl)
         {
@@ -759,52 +795,16 @@ enum CXChildVisitResult LightAnalysis::countChildren(CXCursor cursor,
 
 bool Modification::queryIfFirstDefinition(const SVFValue* defInst)
 {
-    std::string location = defInst->getSourceLoc();
-    if (location == "")
+    auto [targetLine, srcPathString] = extractLineAndPath(defInst);
+    if (srcPathString == "")
     {
-        // printf("location is empty\n");
         return false;
     }
-    std::string::size_type pos = location.find("\"ln\":");
-    if (pos == std::string::npos)
-    {
-        // printf("location is empty\n");
-        return false;
-    }
-    int target_line =
-        std::stoi(location.substr(pos + 5, location.find(",") - pos - 5));
+    std::string fullPath = srcFilePath + srcPathString;
+    CXTranslationUnit unit = createTranslationUnit(fullPath);
 
-    int flag = 0;
-    pos = location.find("\"file\": \"");
-    if (pos == std::string::npos)
-    {
-        flag = 1;
-        pos = location.find("\"fl\": \"");
-        if (pos == std::string::npos)
-        {
-            printf("location is empty\n");
-            return false;
-        }
-    }
-    std::string srcpathstring;
-    if (flag == 0)
-    {
-        srcpathstring =
-            location.substr(pos + 9, location.find("\" }") - pos - 9);
-    }
-    else
-    {
-        srcpathstring =
-            location.substr(pos + 7, location.find("\" }") - pos - 7);
-    }
-    CXIndex index = clang_createIndex(0, 0);
-    CXTranslationUnit unit = clang_parseTranslationUnit(
-        index, (srcFilePath + srcpathstring).c_str(), nullptr, 0, nullptr, 0,
-        CXTranslationUnit_None);
-
-    assert(unit && "unit cannot be nullptr!");
     CXCursor cursor = clang_getTranslationUnitCursor(unit);
-    VisitorData data{0, target_line, 0, "", {}};
+    VisitorData data{0, targetLine, 0, "", {}};
     clang_visitChildren(cursor, &LightAnalysis::defineVisitor, &data);
     if (data.order_number == 1)
     {
@@ -822,51 +822,20 @@ void Modification::addNewCodeSnippet(const SVFValue* startInst,
 void Modification::addNewCodeSnippetAfter(const SVFValue* startInst,
                                           std::string str)
 {
-    std::string location = startInst->getSourceLoc();
-    if (location == "")
+    auto [targetLine, srcPathString] = extractLineAndPath(startInst);
+    if (srcPathString == "")
     {
         return;
     }
-    std::string::size_type pos = location.find("\"ln\":");
-    if (pos == std::string::npos)
-    {
-        return;
-    }
-    int target_line =
-        std::stoi(location.substr(pos + 5, location.find(",") - pos - 5));
-
-    int flag = 0;
-    pos = location.find("\"file\": \"");
-    if (pos == std::string::npos)
-    {
-        flag = 1;
-        pos = location.find("\"fl\": \"");
-        if (pos == std::string::npos)
-        {
-            return;
-        }
-    }
-    std::string srcpathstring;
-    if (flag == 0)
-    {
-        srcpathstring =
-            location.substr(pos + 9, location.find("\" }") - pos - 9);
-    }
-    else
-    {
-        srcpathstring =
-            location.substr(pos + 7, location.find("\" }") - pos - 7);
-    }
-
-    ReadWriteContext& context = fileContextMap[srcFilePath + srcpathstring];
+    ReadWriteContext& context = fileContextMap[srcFilePath + srcPathString];
 
     // Adjust the target line number based on lineOffsetMap
-    int adjusted_target_line = target_line;
+    int adjusted_targetLine = targetLine;
     for (const auto& offset_pair : context.lineOffsetMap)
     {
-        if (offset_pair.first <= target_line)
+        if (offset_pair.first <= targetLine)
         {
-            adjusted_target_line += offset_pair.second;
+            adjusted_targetLine += offset_pair.second;
         }
         else
         {
@@ -882,9 +851,9 @@ void Modification::addNewCodeSnippetAfter(const SVFValue* startInst,
         lines.push_back(line);
     }
     // Insert the new code snippet after the adjusted target line
-    if (adjusted_target_line < (int)(lines.size()))
+    if (adjusted_targetLine < (int)(lines.size()))
     {
-        lines.insert(lines.begin() + adjusted_target_line, str);
+        lines.insert(lines.begin() + adjusted_targetLine, str);
     }
     // 重新整合workText
     std::ostringstream os;
@@ -900,7 +869,7 @@ void Modification::addNewCodeSnippetAfter(const SVFValue* startInst,
     // Update the lineOffsetMap for all lines after the adjusted target line
     for (const auto& offset_pair : context.lineOffsetMap)
     {
-        if (offset_pair.first > adjusted_target_line)
+        if (offset_pair.first > adjusted_targetLine)
         {
             // Insert a new pair with the modified key and the same value
             newOffsetMap[offset_pair.first + 1] = offset_pair.second;
@@ -915,60 +884,29 @@ void Modification::addNewCodeSnippetAfter(const SVFValue* startInst,
     // Replace the old map with the new map
     context.lineOffsetMap = std::move(newOffsetMap);
     // Add a new offset for the inserted line
-    context.lineOffsetMap[target_line] += 1;
+    context.lineOffsetMap[targetLine] += 1;
 
     // Store the updated context back in the fileContextMap
-    fileContextMap[srcFilePath + srcpathstring] = context;
+    fileContextMap[srcFilePath + srcPathString] = context;
 }
 
 void Modification::addNewCodeSnippetBefore(const SVFValue* startInst,
                                            std::string str)
 {
-    std::string location = startInst->getSourceLoc();
-    if (location == "")
+    auto [targetLine, srcPathString] = extractLineAndPath(startInst);
+    if (srcPathString == "")
     {
         return;
     }
-    std::string::size_type pos = location.find("\"ln\":");
-    if (pos == std::string::npos)
-    {
-        return;
-    }
-    int target_line =
-        std::stoi(location.substr(pos + 5, location.find(",") - pos - 5));
-
-    int flag = 0;
-    pos = location.find("\"file\": \"");
-    if (pos == std::string::npos)
-    {
-        flag = 1;
-        pos = location.find("\"fl\": \"");
-        if (pos == std::string::npos)
-        {
-            return;
-        }
-    }
-    std::string srcpathstring;
-    if (flag == 0)
-    {
-        srcpathstring =
-            location.substr(pos + 9, location.find("\" }") - pos - 9);
-    }
-    else
-    {
-        srcpathstring =
-            location.substr(pos + 7, location.find("\" }") - pos - 7);
-    }
-
-    ReadWriteContext& context = fileContextMap[srcFilePath + srcpathstring];
+    ReadWriteContext& context = fileContextMap[srcFilePath + srcPathString];
 
     // Adjust the target line number based on lineOffsetMap
-    int adjusted_target_line = target_line;
+    int adjusted_targetLine = targetLine;
     for (const auto& offset_pair : context.lineOffsetMap)
     {
-        if (offset_pair.first < target_line)
+        if (offset_pair.first < targetLine)
         {
-            adjusted_target_line += offset_pair.second;
+            adjusted_targetLine += offset_pair.second;
         }
         else
         {
@@ -984,9 +922,9 @@ void Modification::addNewCodeSnippetBefore(const SVFValue* startInst,
         lines.push_back(line);
     }
     // Insert the new code snippet before the adjusted target line
-    if (adjusted_target_line > 0)
+    if (adjusted_targetLine > 0)
     {
-        lines.insert(lines.begin() + adjusted_target_line - 1, str);
+        lines.insert(lines.begin() + adjusted_targetLine - 1, str);
     }
     // 重新整合workText
     std::ostringstream os;
@@ -1002,7 +940,7 @@ void Modification::addNewCodeSnippetBefore(const SVFValue* startInst,
     // Update the lineOffsetMap for all lines after the adjusted target line
     for (const auto& offset_pair : context.lineOffsetMap)
     {
-        if (offset_pair.first >= adjusted_target_line)
+        if (offset_pair.first >= adjusted_targetLine)
         {
             // Insert a new pair with the modified key and the same value
             newOffsetMap[offset_pair.first + 1] = offset_pair.second;
@@ -1017,59 +955,28 @@ void Modification::addNewCodeSnippetBefore(const SVFValue* startInst,
     // Replace the old map with the new map
     context.lineOffsetMap = std::move(newOffsetMap);
     // Add a new offset for the inserted line
-    context.lineOffsetMap[target_line - 1] += 1;
+    context.lineOffsetMap[targetLine - 1] += 1;
 
     // Store the updated context back in the fileContextMap
-    fileContextMap[srcFilePath + srcpathstring] = context;
+    fileContextMap[srcFilePath + srcPathString] = context;
 }
 
 void Modification::replace(const SVFValue* inst, std::string str)
 {
-    std::string location = inst->getSourceLoc();
-    if (location == "")
+    auto [targetLine, srcPathString] = extractLineAndPath(inst);
+    if (srcPathString == "")
     {
         return;
     }
-    std::string::size_type pos = location.find("\"ln\":");
-    if (pos == std::string::npos)
-    {
-        return;
-    }
-    int target_line =
-        std::stoi(location.substr(pos + 5, location.find(",") - pos - 5));
-
-    int flag = 0;
-    pos = location.find("\"file\": \"");
-    if (pos == std::string::npos)
-    {
-        flag = 1;
-        pos = location.find("\"fl\": \"");
-        if (pos == std::string::npos)
-        {
-            return;
-        }
-    }
-    std::string srcpathstring;
-    if (flag == 0)
-    {
-        srcpathstring =
-            location.substr(pos + 9, location.find("\" }") - pos - 9);
-    }
-    else
-    {
-        srcpathstring =
-            location.substr(pos + 7, location.find("\" }") - pos - 7);
-    }
-
-    ReadWriteContext& context = fileContextMap[srcFilePath + srcpathstring];
+    ReadWriteContext& context = fileContextMap[srcFilePath + srcPathString];
 
     // Adjust the target line number based on lineOffsetMap
-    int adjusted_target_line = target_line;
+    int adjusted_targetLine = targetLine;
     for (const auto& offset_pair : context.lineOffsetMap)
     {
-        if (offset_pair.first < target_line)
+        if (offset_pair.first < targetLine)
         {
-            adjusted_target_line += offset_pair.second;
+            adjusted_targetLine += offset_pair.second;
         }
         else
         {
@@ -1085,9 +992,9 @@ void Modification::replace(const SVFValue* inst, std::string str)
         lines.push_back(line);
     }
     // Replace the content of the specified line with the new code snippet
-    if (adjusted_target_line <= (int)(lines.size()))
+    if (adjusted_targetLine <= (int)(lines.size()))
     {
-        lines[adjusted_target_line - 1] =
+        lines[adjusted_targetLine - 1] =
             str; // 注意这里的索引是从0开始的，所以需要减1
     }
     // 重新整合workText
@@ -1099,7 +1006,7 @@ void Modification::replace(const SVFValue* inst, std::string str)
     context.workText = os.str();
     // 注意：在替换操作中，我们不需要修改lineOffsetMap，因为行数没有变化
     // Store the updated context back in the fileContextMap
-    fileContextMap[srcFilePath + srcpathstring] = context;
+    fileContextMap[srcFilePath + srcPathString] = context;
 }
 
 enum CXChildVisitResult LightAnalysis::branchVisitor(CXCursor curCursor,
@@ -1112,8 +1019,8 @@ enum CXChildVisitResult LightAnalysis::branchVisitor(CXCursor curCursor,
     clang_getSpellingLocation(loc, &file, &line, &column, nullptr);
     VisitorData* data = static_cast<VisitorData*>(client_data);
 
-    unsigned target_line = data->target_line;
-    if (line == target_line)
+    unsigned targetLine = data->targetLine;
+    if (line == targetLine)
     {
         // int m = static_cast<CXCursorKind>(clang_getCursorKind(curCursor));
         //  printf ("m = %d\n", m);
@@ -1173,10 +1080,10 @@ enum CXChildVisitResult LightAnalysis::LoopVisitor(CXCursor curCursor,
     clang_getSpellingLocation(loc, &file, &line, &column, nullptr);
     VisitorData* data = static_cast<VisitorData*>(client_data);
 
-    unsigned target_line = data->target_line;
-    if (line == target_line)
+    unsigned targetLine = data->targetLine;
+    if (line == targetLine)
     {
-        if (target_line == 22)
+        if (targetLine == 22)
         {
             int m = static_cast<CXCursorKind>(clang_getCursorKind(curCursor));
             std::cout << m << std::endl;
@@ -1217,14 +1124,43 @@ enum CXChildVisitResult LightAnalysis::LoopVisitor(CXCursor curCursor,
     return CXChildVisit_Recurse;
 }
 
+enum CXChildVisitResult LightAnalysis::StmtVisitor(CXCursor curCursor,
+                                                   CXCursor parent,
+                                                   CXClientData client_data)
+{
+    CXSourceLocation loc = clang_getCursorLocation(curCursor);
+    unsigned line, column;
+    CXFile file;
+    clang_getSpellingLocation(loc, &file, &line, &column, nullptr);
+    VisitorData* data = static_cast<VisitorData*>(client_data);
+
+    unsigned targetLine = data->targetLine;
+    if (line == targetLine)
+    {
+        std::vector<std::string> params;
+        CXSourceRange wholeforrange = clang_getCursorExtent(curCursor);
+        CXSourceLocation startLoc = clang_getRangeStart(wholeforrange);
+        CXSourceLocation endLoc = clang_getRangeEnd(wholeforrange);
+        unsigned startLine, startColumn, endLine, endColumn;
+        clang_getSpellingLocation(startLoc, NULL, &startLine, &startColumn,
+                                  NULL);
+        clang_getSpellingLocation(endLoc, NULL, &endLine, &endColumn, NULL);
+        data->lines.push_back(startLine);
+        data->columns.push_back(startColumn);
+        data->lines.push_back(endLine);
+        data->columns.push_back(endColumn);
+    }
+    return CXChildVisit_Recurse;
+}
+
 void Modification::deleteCodeRange(int startLine, int startColumn, int endLine,
-                                   int endColumn, std::string srcpathstring)
+                                   int endColumn, std::string srcPathString)
 {
     // Assuming we have access to fileContextMap and srcFilePath similar to the
-    // reference functions Assuming srcpathstring can be obtained in a similar
+    // reference functions Assuming srcPathString can be obtained in a similar
     // manner as the reference functions
 
-    ReadWriteContext& context = fileContextMap[srcFilePath + srcpathstring];
+    ReadWriteContext& context = fileContextMap[srcFilePath + srcPathString];
 
     // Adjust the start and end line numbers based on lineOffsetMap
     int adjusted_start_line = startLine;
@@ -1287,15 +1223,15 @@ void Modification::deleteCodeRange(int startLine, int startColumn, int endLine,
     context.workText = os.str();
 
     // Store the updated context back in the fileContextMap
-    fileContextMap[srcFilePath + srcpathstring] = context;
+    fileContextMap[srcFilePath + srcPathString] = context;
 }
 void Modification::insertNegation(int ifLine, int ifColumn, int endColumn,
-                                  std::string srcpathstring)
+                                  std::string srcPathString)
 {
     // Assuming we have access to fileContextMap and srcFilePath similar to the
-    // reference functions Assuming srcpathstring can be obtained in a similar
+    // reference functions Assuming srcPathString can be obtained in a similar
     // manner as the reference functions
-    ReadWriteContext& context = fileContextMap[srcFilePath + srcpathstring];
+    ReadWriteContext& context = fileContextMap[srcFilePath + srcPathString];
 
     // Adjust the start and end line numbers based on lineOffsetMap
     int adjusted_start_line = ifLine;
@@ -1330,34 +1266,20 @@ void Modification::insertNegation(int ifLine, int ifColumn, int endColumn,
     }
     context.workText = os.str();
 
-    fileContextMap[srcFilePath + srcpathstring] = context;
+    fileContextMap[srcFilePath + srcPathString] = context;
 }
 void Modification::deleteEitherBranch(const SVFValue* branchInst,
                                       bool condValue)
 {
-    std::string location = branchInst->getSourceLoc();
-    if (location == "")
+    auto [targetLine, srcPathString] = extractLineAndPath(branchInst);
+    if (srcPathString == "")
     {
         return;
     }
-    std::string::size_type pos = location.find("\"ln\":");
-    int target_line =
-        std::stoi(location.substr(pos + 5, location.find(",") - pos - 5));
-    pos = location.find("\"fl\": \"");
-    if (pos == std::string::npos)
-    {
-        return;
-    }
-    std::string srcpathstring =
-        location.substr(pos + 7, location.find("\" }") - pos - 7);
-    std ::cout << srcpathstring << std::endl;
-    CXIndex index = clang_createIndex(0, 0);
-    CXTranslationUnit unit = clang_parseTranslationUnit(
-        index, (srcFilePath + srcpathstring).c_str(), nullptr, 0, nullptr, 0,
-        CXTranslationUnit_None);
-    assert(unit && "unit cannot be nullptr!");
+    std::string fullPath = srcFilePath + srcPathString;
+    CXTranslationUnit unit = createTranslationUnit(fullPath);
     CXCursor cursor = clang_getTranslationUnitCursor(unit);
-    VisitorData data{0, target_line, 0, "", {}, {}, {}};
+    VisitorData data{0, targetLine, 0, "", {}, {}, {}};
     clang_visitChildren(cursor, &LightAnalysis::branchVisitor, &data);
     int childnum = data.order_number;
     std::vector<int> lines = data.lines;
@@ -1383,9 +1305,9 @@ void Modification::deleteEitherBranch(const SVFValue* branchInst,
             int ifConditionEndColumn = columns[3];
 
             insertNegation(ifConditionStartLine, ifConditionStartColumn - 1,
-                           ifConditionEndColumn + 1, srcpathstring);
+                           ifConditionEndColumn + 1, srcPathString);
             deleteCodeRange(ifStartLine, ifStartColumn + 2, ifEndLine,
-                            ifEndColumn - 1, srcpathstring);
+                            ifEndColumn - 1, srcPathString);
         }
         else
         {
@@ -1395,7 +1317,7 @@ void Modification::deleteEitherBranch(const SVFValue* branchInst,
             int endLine = lines[7];
             int endColumn = columns[7];
             deleteCodeRange(elseStartLine, elseStartColumn - 4, endLine,
-                            endColumn, srcpathstring);
+                            endColumn, srcPathString);
         }
     }
     else if (childnum == 2)
@@ -1408,7 +1330,7 @@ void Modification::deleteEitherBranch(const SVFValue* branchInst,
             int endLine = lines[1];
             int endColumn = columns[1];
             deleteCodeRange(startLine, startColumn, endLine, endColumn,
-                            srcpathstring);
+                            srcPathString);
         }
         // 如果没有else且condValue为false，则不需要删除代码
     }
@@ -1416,29 +1338,16 @@ void Modification::deleteEitherBranch(const SVFValue* branchInst,
 
 void Modification::deleteBranch(const SVFValue* branchInst)
 {
-    std::string location = branchInst->getSourceLoc();
-    if (location == "")
+    auto [targetLine, srcPathString] = extractLineAndPath(branchInst);
+    if (srcPathString == "")
     {
         return;
     }
-    std::string::size_type pos = location.find("\"ln\":");
-    int target_line =
-        std::stoi(location.substr(pos + 5, location.find(",") - pos - 5));
-    pos = location.find("\"fl\": \"");
-    if (pos == std::string::npos)
-    {
-        return;
-    }
-    std::string srcpathstring =
-        location.substr(pos + 7, location.find("\" }") - pos - 7);
-    std ::cout << srcpathstring << std::endl;
-    CXIndex index = clang_createIndex(0, 0);
-    CXTranslationUnit unit = clang_parseTranslationUnit(
-        index, (srcFilePath + srcpathstring).c_str(), nullptr, 0, nullptr, 0,
-        CXTranslationUnit_None);
+    std::string fullPath = srcFilePath + srcPathString;
+    CXTranslationUnit unit = createTranslationUnit(fullPath);
     assert(unit && "unit cannot be nullptr!");
     CXCursor cursor = clang_getTranslationUnitCursor(unit);
-    VisitorData data{0, target_line, 0, "", {}};
+    VisitorData data{0, targetLine, 0, "", {}};
     clang_visitChildren(cursor, &LightAnalysis::branchVisitor, &data);
 
     std::vector<int> lines = data.lines;
@@ -1451,34 +1360,21 @@ void Modification::deleteBranch(const SVFValue* branchInst)
     int startColumn = columns[0];
     int endLine = lines[1];
     int endColumn = columns[1];
-    deleteCodeRange(startLine, startColumn, endLine, endColumn, srcpathstring);
+    deleteCodeRange(startLine, startColumn, endLine, endColumn, srcPathString);
 }
 
 void Modification::deleteLoop(const SVFValue* inst)
 {
-    std::string location = inst->getSourceLoc();
-    if (location == "")
+    auto [targetLine, srcPathString] = extractLineAndPath(inst);
+    if (srcPathString == "")
     {
         return;
     }
-    std::string::size_type pos = location.find("\"ln\":");
-    int target_line =
-        std::stoi(location.substr(pos + 5, location.find(",") - pos - 5));
-    pos = location.find("\"fl\": \"");
-    if (pos == std::string::npos)
-    {
-        return;
-    }
-    std::string srcpathstring =
-        location.substr(pos + 7, location.find("\" }") - pos - 7);
-    std ::cout << srcpathstring << std::endl;
-    CXIndex index = clang_createIndex(0, 0);
-    CXTranslationUnit unit = clang_parseTranslationUnit(
-        index, (srcFilePath + srcpathstring).c_str(), nullptr, 0, nullptr, 0,
-        CXTranslationUnit_None);
+    std::string fullPath = srcFilePath + srcPathString;
+    CXTranslationUnit unit = createTranslationUnit(fullPath);
     assert(unit && "unit cannot be nullptr!");
     CXCursor cursor = clang_getTranslationUnitCursor(unit);
-    VisitorData data{0, target_line, 0, "", {}};
+    VisitorData data{0, targetLine, 0, "", {}};
     clang_visitChildren(cursor, &LightAnalysis::LoopVisitor, &data);
 
     std::vector<int> lines = data.lines;
@@ -1491,7 +1387,33 @@ void Modification::deleteLoop(const SVFValue* inst)
     int startColumn = columns[0];
     int endLine = lines[1];
     int endColumn = columns[1];
-    deleteCodeRange(startLine, startColumn, endLine, endColumn, srcpathstring);
+    deleteCodeRange(startLine, startColumn, endLine, endColumn, srcPathString);
+}
+
+void Modification::deleteStmt(const SVFValue* inst)
+{
+    auto [targetLine, srcPathString] = extractLineAndPath(inst);
+    if (srcPathString == "")
+    {
+        return;
+    }
+    std::string fullPath = srcFilePath + srcPathString;
+    CXTranslationUnit unit = createTranslationUnit(fullPath);
+    assert(unit && "unit cannot be nullptr!");
+    CXCursor cursor = clang_getTranslationUnitCursor(unit);
+    VisitorData data{0, targetLine, 0, "", {}};
+    clang_visitChildren(cursor, &LightAnalysis::StmtVisitor, &data);
+    std::vector<int> lines = data.lines;
+    std::vector<int> columns = data.columns;
+    if (lines.size() == 0)
+    {
+        return;
+    }
+    int startLine = lines[0];
+    int startColumn = columns[0];
+    int endLine = lines[1];
+    int endColumn = columns[1];
+    deleteCodeRange(startLine, startColumn, endLine, endColumn, srcPathString);
 }
 
 void Modification::setHoleFilling(int holeNumber, std::string varName)

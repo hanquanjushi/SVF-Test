@@ -195,6 +195,10 @@ public:
                                                CXCursor parent,
                                                CXClientData client_data);
 
+    static enum CXChildVisitResult StmtVisitor(CXCursor curCursor,
+                                               CXCursor parent,
+                                               CXClientData client_data);
+
     void runOnSrc();
 
     void findNodeOnTree(int target_line, int order_number,

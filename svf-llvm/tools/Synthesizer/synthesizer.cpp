@@ -57,7 +57,6 @@ void traverseOnSVFStmt(const ICFGNode* node, SVF::Modification* modification)
         std::string functionName;
         pos = m.find("\"fl\": \"");
         std::string srcpath = m.substr(pos + 7, m.find("\" }") - pos - 7);
-
         std::vector<std::string> parameters;
         if (std::regex_search(inststring, match, re) && match.size() > 2)
         {
@@ -135,8 +134,7 @@ void traverseOnSVFStmt(const ICFGNode* node, SVF::Modification* modification)
                                               parameters, srcpath);
             }
         }
-    }
-    // 调用Modification的析构函数
+    } 
 }
 
 int main(int argc, char** argv)
