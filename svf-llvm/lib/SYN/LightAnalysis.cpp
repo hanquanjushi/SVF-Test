@@ -1163,6 +1163,60 @@ enum CXChildVisitResult LightAnalysis::branchVisitor(CXCursor curCursor,
     return CXChildVisit_Recurse;
 }
 
+enum CXChildVisitResult LightAnalysis::LoopVisitor(CXCursor curCursor,
+                                                   CXCursor parent,
+                                                   CXClientData client_data)
+{
+    CXSourceLocation loc = clang_getCursorLocation(curCursor);
+    unsigned line, column;
+    CXFile file;
+    clang_getSpellingLocation(loc, &file, &line, &column, nullptr);
+    VisitorData* data = static_cast<VisitorData*>(client_data);
+
+    unsigned target_line = data->target_line;
+    if (line == target_line)
+    {
+        if (target_line == 22)
+        {
+            int m = static_cast<CXCursorKind>(clang_getCursorKind(curCursor));
+            std::cout << m << std::endl;
+        }
+        if (static_cast<CXCursorKind>(clang_getCursorKind(curCursor)) ==
+            CXCursor_ForStmt)
+        {
+            std::vector<std::string> params;
+            CXSourceRange wholeforrange = clang_getCursorExtent(curCursor);
+            CXSourceLocation startLoc = clang_getRangeStart(wholeforrange);
+            CXSourceLocation endLoc = clang_getRangeEnd(wholeforrange);
+            unsigned startLine, startColumn, endLine, endColumn;
+            clang_getSpellingLocation(startLoc, NULL, &startLine, &startColumn,
+                                      NULL);
+            clang_getSpellingLocation(endLoc, NULL, &endLine, &endColumn, NULL);
+            data->lines.push_back(startLine);
+            data->columns.push_back(startColumn);
+            data->lines.push_back(endLine);
+            data->columns.push_back(endColumn);
+        }
+        if (static_cast<CXCursorKind>(clang_getCursorKind(curCursor)) ==
+            CXCursor_WhileStmt)
+        {
+            std::vector<std::string> params;
+            CXSourceRange wholeforrange = clang_getCursorExtent(curCursor);
+            CXSourceLocation startLoc = clang_getRangeStart(wholeforrange);
+            CXSourceLocation endLoc = clang_getRangeEnd(wholeforrange);
+            unsigned startLine, startColumn, endLine, endColumn;
+            clang_getSpellingLocation(startLoc, NULL, &startLine, &startColumn,
+                                      NULL);
+            clang_getSpellingLocation(endLoc, NULL, &endLine, &endColumn, NULL);
+            data->lines.push_back(startLine);
+            data->columns.push_back(startColumn);
+            data->lines.push_back(endLine);
+            data->columns.push_back(endColumn);
+        }
+    }
+    return CXChildVisit_Recurse;
+}
+
 void Modification::deleteCodeRange(int startLine, int startColumn, int endLine,
                                    int endColumn, std::string srcpathstring)
 {
@@ -1235,7 +1289,7 @@ void Modification::deleteCodeRange(int startLine, int startColumn, int endLine,
     // Store the updated context back in the fileContextMap
     fileContextMap[srcFilePath + srcpathstring] = context;
 }
-void Modification::insertNegation(int ifLine, int ifColumn,
+void Modification::insertNegation(int ifLine, int ifColumn, int endColumn,
                                   std::string srcpathstring)
 {
     // Assuming we have access to fileContextMap and srcFilePath similar to the
@@ -1265,7 +1319,8 @@ void Modification::insertNegation(int ifLine, int ifColumn,
     if (adjusted_start_line <= (int)(lines.size()))
     {
         // Insert '!' before the condition
-        lines[adjusted_start_line - 1].insert(ifColumn, "!"); 
+        lines[adjusted_start_line - 1].insert(ifColumn - 1, "!(");
+        lines[adjusted_start_line - 1].insert(endColumn + 1, ")");
     }
 
     std::ostringstream os;
@@ -1325,11 +1380,12 @@ void Modification::deleteEitherBranch(const SVFValue* branchInst,
 
             int ifConditionStartLine = lines[2];
             int ifConditionStartColumn = columns[2];
+            int ifConditionEndColumn = columns[3];
 
-            insertNegation(ifConditionStartLine, ifConditionStartColumn,
-                           srcpathstring);
-            deleteCodeRange(ifStartLine, ifStartColumn, ifEndLine, ifEndColumn,
-                            srcpathstring);
+            insertNegation(ifConditionStartLine, ifConditionStartColumn - 1,
+                           ifConditionEndColumn + 1, srcpathstring);
+            deleteCodeRange(ifStartLine, ifStartColumn + 2, ifEndLine,
+                            ifEndColumn - 1, srcpathstring);
         }
         else
         {
@@ -1384,6 +1440,46 @@ void Modification::deleteBranch(const SVFValue* branchInst)
     CXCursor cursor = clang_getTranslationUnitCursor(unit);
     VisitorData data{0, target_line, 0, "", {}};
     clang_visitChildren(cursor, &LightAnalysis::branchVisitor, &data);
+
+    std::vector<int> lines = data.lines;
+    std::vector<int> columns = data.columns;
+    if (lines.size() == 0)
+    {
+        return;
+    }
+    int startLine = lines[0];
+    int startColumn = columns[0];
+    int endLine = lines[1];
+    int endColumn = columns[1];
+    deleteCodeRange(startLine, startColumn, endLine, endColumn, srcpathstring);
+}
+
+void Modification::deleteLoop(const SVFValue* inst)
+{
+    std::string location = inst->getSourceLoc();
+    if (location == "")
+    {
+        return;
+    }
+    std::string::size_type pos = location.find("\"ln\":");
+    int target_line =
+        std::stoi(location.substr(pos + 5, location.find(",") - pos - 5));
+    pos = location.find("\"fl\": \"");
+    if (pos == std::string::npos)
+    {
+        return;
+    }
+    std::string srcpathstring =
+        location.substr(pos + 7, location.find("\" }") - pos - 7);
+    std ::cout << srcpathstring << std::endl;
+    CXIndex index = clang_createIndex(0, 0);
+    CXTranslationUnit unit = clang_parseTranslationUnit(
+        index, (srcFilePath + srcpathstring).c_str(), nullptr, 0, nullptr, 0,
+        CXTranslationUnit_None);
+    assert(unit && "unit cannot be nullptr!");
+    CXCursor cursor = clang_getTranslationUnitCursor(unit);
+    VisitorData data{0, target_line, 0, "", {}};
+    clang_visitChildren(cursor, &LightAnalysis::LoopVisitor, &data);
 
     std::vector<int> lines = data.lines;
     std::vector<int> columns = data.columns;

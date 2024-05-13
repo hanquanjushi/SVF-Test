@@ -13,9 +13,9 @@ int m = 1;
 int m = 1;
 int m = 1;
 	int i;
-	for (i = 0; i < size+1; i++) {
-		printf("%c", tag.startTag[i]);
-	}
+	
+
+
 }
 
 PLINKEDLIST tagparse(char* html){
@@ -32,8 +32,7 @@ int m = 1;
     int isStartTag;
     char *startTag, *endTag;
     
-	for (i = 0; i < strlen(html); i++) {
-		
+	
 
 
 
@@ -49,7 +48,8 @@ int m = 1;
 
 
 
-	}
+
+
     
     return list;
 }
@@ -84,7 +84,7 @@ int m = 1;
 
 	int size;
 
-	while ((start[i] >= 'a' && start[i] <= 'z') || (start[i] >= 'A' && start[i] <= 'Z')) { i++; }
+	
 	size = (int)(&start[i] - start);
 	return makeStrFrom(start, size);
 }
@@ -100,7 +100,7 @@ int m = 1;
 
 
 	attributePtr += strlen(attribute) + 2; // 2 -> ="
-	while (attributePtr[i] != '"') { i++; }
+	
 	size = (int)(&attributePtr[i] - attributePtr);
 	return makeStrFrom(attributePtr, size);
 }
