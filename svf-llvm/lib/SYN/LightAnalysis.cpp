@@ -1153,6 +1153,28 @@ enum CXChildVisitResult LightAnalysis::StmtVisitor(CXCursor curCursor,
     return CXChildVisit_Recurse;
 }
 
+enum CXChildVisitResult LightAnalysis::definenameVisitor(
+    CXCursor curCursor, CXCursor parent, CXClientData client_data)
+{
+    CXSourceLocation loc = clang_getCursorLocation(curCursor);
+    unsigned int line, column;
+    CXFile file;
+    clang_getSpellingLocation(loc, &file, &line, &column, nullptr);
+    VisitorData* data = static_cast<VisitorData*>(client_data);
+    unsigned targetLine = data->targetLine;
+    if (line == targetLine)
+    {
+        CXString var_name = clang_getCursorSpelling(parent);
+        if (clang_getCursorKind(parent) == CXCursor_VarDecl)
+        {
+            std::cout << "Variable " << clang_getCString(var_name)
+                      << " is first defined here.\n";
+            data->functionName = clang_getCString(var_name);
+        }
+    }
+    return CXChildVisit_Recurse;
+}
+
 void Modification::deleteCodeRange(int startLine, int startColumn, int endLine,
                                    int endColumn, std::string srcPathString)
 {
@@ -1268,6 +1290,7 @@ void Modification::insertNegation(int ifLine, int ifColumn, int endColumn,
 
     fileContextMap[srcFilePath + srcPathString] = context;
 }
+
 void Modification::deleteEitherBranch(const SVFValue* branchInst,
                                       bool condValue)
 {
@@ -1349,7 +1372,6 @@ void Modification::deleteBranch(const SVFValue* branchInst)
     CXCursor cursor = clang_getTranslationUnitCursor(unit);
     VisitorData data{0, targetLine, 0, "", {}};
     clang_visitChildren(cursor, &LightAnalysis::branchVisitor, &data);
-
     std::vector<int> lines = data.lines;
     std::vector<int> columns = data.columns;
     if (lines.size() == 0)
@@ -1416,7 +1438,57 @@ void Modification::deleteStmt(const SVFValue* inst)
     deleteCodeRange(startLine, startColumn, endLine, endColumn, srcPathString);
 }
 
-void Modification::setHoleFilling(int holeNumber, std::string varName)
+void Modification::setHoleFilling(int holeNumber, std::string varName,
+                                  std::string srcPathString)
 {
-    std::cout << holeNumber << std::endl;
+    // Step 1: Parse input parameters
+    std::string placeholder = "$" + std::to_string(holeNumber);
+    // Step 2: Locate source code context
+    ReadWriteContext& context = fileContextMap[srcFilePath + srcPathString];
+    // Step 3: Adjust the target line number if necessary
+    // (This step is not needed for this function as we are not targeting a
+    // specific line)
+    // Step 4: Read source code text
+    std::stringstream ss(context.workText);
+    std::string line;
+    std::vector<std::string> lines;
+    while (std::getline(ss, line))
+    {
+        lines.push_back(line);
+    }
+
+    // Step 5: Replace placeholder
+    for (std::string& currentLine : lines)
+    {
+        size_t startPos = currentLine.find(placeholder);
+        while (startPos != std::string::npos)
+        {
+            currentLine.replace(startPos, placeholder.length(), varName);
+            startPos =
+                currentLine.find(placeholder, startPos + varName.length());
+        }
+    }
+
+    // Step 6: Reassemble text
+    std::ostringstream os;
+    for (const auto& modifiedLine : lines)
+    {
+        os << modifiedLine << "\n";
+    }
+    context.workText = os.str();
+
+    // Step 7: Update source code context
+    // (No need to modify lineOffsetMap as line numbers have not changed)
+}
+
+void Modification::setHoleFilling(int holeNumber, const SVFValue* varDefInst,
+                    std::string srcPathString)
+{
+    std::string fullPath = srcFilePath + srcPathString;
+    CXTranslationUnit unit = createTranslationUnit(fullPath);
+    CXCursor cursor = clang_getTranslationUnitCursor(unit);
+    VisitorData data{0, 0, 0, "", {}};
+    clang_visitChildren(cursor, &LightAnalysis::defineVisitor, &data);
+    std::string definename = data.functionName;
+    setHoleFilling(holeNumber, definename, srcPathString);
 }

@@ -1,0 +1,83 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+#include "json.h"
+
+const char *read_file(const char *path) {
+int n = 2;
+int m = 1;
+int m = 1;
+int m = 1;
+  if (file == NULL) {
+    fprintf(stderr, "Expected file \"%s\" not found", path);
+    return NULL;
+  }
+  fseek(file, 0, SEEK_END);
+int n = 2;
+int m = 1;
+int m = 1;
+int m = 1;
+int n = 2;
+int n = 2;
+int m = 1;
+int m = 1;
+int m = 1;
+int m = 1;
+int m = 1;
+
+  if (buffer == NULL) {
+    fprintf(stderr, "Unable to allocate memory for file");
+    fclose(file);
+    return NULL;
+  }
+
+  fread(buffer, 1, len, file);
+  buffer[len] = '\0';
+
+  return (const char *)buffer;
+}
+
+int main() {
+int n = 2;
+int m = 1;
+int m = 1;
+int m = 1;
+int m = 1;
+  if (json == NULL) {
+    return -1;
+  }
+
+  clock_t start, end;
+  start = clock();
+int n = 2;
+int m = 1;
+int m = 1;
+int m = 1;
+int m = 1;
+  end = clock();
+
+  printf("Time taken %fs\n", (double)(end - start) / (double)CLOCKS_PER_SEC);
+
+  free((void *)json);
+
+  if (result_is_err(json_element)(&element_result)) {
+int n = 2;
+int m = 1;
+int m = 1;
+int m = 1;
+int m = 1;
+    fprintf(stderr, "Error parsing JSON: %s\n", json_error_to_string(error));
+    return -1;
+  }
+int n = 2;
+int m = 1;
+int m = 1;
+int m = 1;
+
+  // json_print(&element, 2);
+  json_free(&element);
+
+  return 0;
+}
