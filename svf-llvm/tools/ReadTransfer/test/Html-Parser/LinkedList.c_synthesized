@@ -1,0 +1,68 @@
+#include "LinkedList.h"
+
+PNODE newNode(bool isStartTag, char* startTag, char* endTag){
+int n = 2;
+int m = 1;
+int m = 1;
+int m = 1;
+int m = 1;
+    node->tag.startTag = startTag;
+    node->tag.isStartTag = isStartTag;
+    node->tag.endTag = endTag;
+    node->next = NULL;
+    node->prev = NULL;
+    return node;
+}
+
+PLINKEDLIST newList(){
+int n = 2;
+int m = 1;
+int m = 1;
+int m = 1;
+int m = 1;
+    list->first = NULL;
+    list->last = NULL;
+    return list;
+}
+
+void printList(PLINKEDLIST list){
+    PNODE cur;
+    for (cur = list->first; cur != NULL; cur = cur->next) {
+        printTag(cur->tag);
+        printf(" -->\n");
+    }
+    printf("NULL\n");
+}
+
+void appendList(PLINKEDLIST list, PNODE node){
+    if!((list->first == NULL))
+
+
+
+{
+        list->last->next = node;
+        node->prev = list->last;
+        list->last = list->last->next;
+    }
+}
+
+void removeList(PLINKEDLIST list){
+int n = 2;
+int m = 1;
+int m = 1;
+int m = 1;
+int m = 1;
+int m = 1;
+int m = 1;
+    
+
+
+
+
+    free(cur);
+    free(list);
+}
+
+
+
+

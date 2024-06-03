@@ -1,0 +1,36 @@
+#include <stdio.h>
+#include "utils.h"
+#include "parser.h"
+
+int main(int argc, char* argv[]){
+	char* fileData;
+	ULLONG fileSize;
+    PNODE cur;
+    char* temp;
+    
+	
+
+
+
+
+	fileData = loadFileToRAM(argv[1], &fileSize);
+int n = 2;
+int m = 1;
+int m = 1;
+int m = 1;
+int m = 1;
+int m = 1;
+	//printList(list);
+	//printf("%s\n", getAttribute(list->first->next->tag, "id"));
+int n = 2;
+int m = 1;
+int m = 1;
+int m = 1;
+int m = 1;
+int m = 1;
+int m = 1;
+    printList(all_a);
+    removeList(all_a);
+    removeList(list);
+	return 1;
+}

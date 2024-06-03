@@ -1,5 +1,6 @@
 add_subdirectory(SABER)
 add_subdirectory(Synthesizer)
+add_subdirectory(ReadTransfer)
 add_subdirectory(WPA)
 add_subdirectory(Example)
 add_subdirectory(DDA)
@@ -9,7 +10,7 @@ add_subdirectory(LLVM2SVF)
 add_subdirectory(AE)
 
 set_target_properties(
-    cfl dvf svf-ex llvm2svf mta saber wpa synthesizer ae
+    cfl dvf svf-ex llvm2svf mta saber wpa synthesizer ae ReadTransfer
     PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 )
